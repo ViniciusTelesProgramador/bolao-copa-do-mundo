@@ -2,14 +2,17 @@
 
 import React, { useState, useTransition, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { EnvelopeSimple, Spinner, CheckSquare } from '@phosphor-icons/react';
-import { useSearchParams } from 'next/navigation';
+import { EnvelopeSimple, Lock, Spinner, CheckSquare } from '@phosphor-icons/react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
-// Componente interno que consome os parâmetros de busca
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
+  
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginMode, setLoginMode] = useState<'magic-link' | 'password'>('magic-link');
   const [isTransitionPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     errorParam === 'invalid_token'
@@ -27,23 +30,39 @@ function LoginForm() {
 
     startTransition(async () => {
       try {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/confirm?next=/palpites`,
-            data: {
-              name: email.split('@')[0], // Nome inicial baseado no email
+        if (loginMode === 'magic-link') {
+          // Envia o Magic Link (OTP por E-mail)
+          const { error } = await supabase.auth.signInWithOtp({
+            email: email.trim(),
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/confirm?next=/palpites`,
+              data: {
+                name: email.split('@')[0],
+              },
             },
-          },
-        });
-
-        if (error) {
-          setStatusMessage({ type: 'error', text: error.message || 'Erro ao enviar link mágico.' });
-        } else {
-          setStatusMessage({
-            type: 'success',
-            text: 'Verifique seu email — enviamos um link de acesso',
           });
+
+          if (error) {
+            setStatusMessage({ type: 'error', text: error.message || 'Erro ao enviar link mágico.' });
+          } else {
+            setStatusMessage({
+              type: 'success',
+              text: 'Verifique seu email — enviamos um link de acesso',
+            });
+          }
+        } else {
+          // Login direto com e-mail e senha (ignora SMTP e rate limit de e-mails!)
+          const { error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
+          });
+
+          if (error) {
+            setStatusMessage({ type: 'error', text: error.message || 'E-mail ou senha incorretos.' });
+          } else {
+            router.push('/palpites');
+            router.refresh();
+          }
         }
       } catch (err: any) {
         setStatusMessage({ type: 'error', text: err.message || 'Erro inesperado.' });
@@ -56,13 +75,45 @@ function LoginForm() {
       {/* Efeito visual decorativo de gradiente */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#22c55e]/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase tracking-wider">
           Acessar Bolão
         </h1>
         <p className="text-xs text-slate-400 mt-2 font-bold uppercase tracking-wider">
-          Digite seu e-mail para receber o acesso instantâneo
+          Escolha como prefere se conectar
         </p>
+      </div>
+
+      {/* Tabs Seletoras de Modo de Login */}
+      <div className="flex border-b border-slate-800 mb-6 bg-slate-950/40 p-1 rounded-xl">
+        <button
+          type="button"
+          onClick={() => {
+            setLoginMode('magic-link');
+            setStatusMessage(null);
+          }}
+          className={`flex-1 py-2 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
+            loginMode === 'magic-link'
+              ? 'bg-[#22c55e] text-slate-950'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Link Mágico (E-mail)
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setLoginMode('password');
+            setStatusMessage(null);
+          }}
+          className={`flex-1 py-2 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
+            loginMode === 'password'
+              ? 'bg-[#22c55e] text-slate-950'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          E-mail e Senha
+        </button>
       </div>
 
       {statusMessage?.type === 'success' ? (
@@ -82,9 +133,9 @@ function LoginForm() {
           </button>
         </div>
       ) : (
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5">
           {/* Input E-mail */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label htmlFor="email" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
               Endereço de E-mail
             </label>
@@ -105,6 +156,30 @@ function LoginForm() {
             </div>
           </div>
 
+          {/* Input Senha (apenas no modo senha) */}
+          {loginMode === 'password' && (
+            <div className="space-y-1.5 animate-fadeIn">
+              <label htmlFor="password" className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Sua Senha
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                  <Lock size={18} />
+                </span>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isTransitionPending}
+                  className="w-full h-12 pl-10 pr-4 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none transition-colors disabled:opacity-50 font-medium"
+                  placeholder="Sua senha de acesso"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
           {statusMessage?.type === 'error' && (
             <div className="bg-rose-950/20 border border-rose-900/40 text-rose-455 text-xs font-bold rounded-xl p-3.5 text-center">
               {statusMessage.text}
@@ -113,16 +188,18 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={isTransitionPending || !email}
+            disabled={isTransitionPending || !email || (loginMode === 'password' && !password)}
             className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-[#22c55e] to-[#1ea34d] hover:from-[#1ea34d] hover:to-[#22c55e] text-slate-950 text-sm font-extrabold uppercase tracking-wider rounded-xl shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isTransitionPending ? (
               <>
                 <Spinner className="animate-spin" size={18} weight="bold" />
-                Enviando...
+                Carregando...
               </>
-            ) : (
+            ) : loginMode === 'magic-link' ? (
               'Entrar com Magic Link'
+            ) : (
+              'Entrar com Senha'
             )}
           </button>
         </form>
@@ -131,7 +208,6 @@ function LoginForm() {
   );
 }
 
-// Wrapper que envolve o formulário em um bloco de Suspense
 export default function LoginPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 bg-[#0f172a] text-slate-100">

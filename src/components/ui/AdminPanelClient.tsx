@@ -145,9 +145,9 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-fadeIn">
-      {/* Formulário de Cadastro (Lado Esquerdo, 1 Coluna) */}
-      <div className="lg:col-span-1 bg-[#1e293b] border border-slate-700/60 rounded-2xl p-6 shadow-xl">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fadeIn">
+      {/* Formulário de Cadastro (Lado Esquerdo, 4 Colunas) */}
+      <div className="lg:col-span-4 bg-[#1e293b] border border-slate-700/60 rounded-2xl p-6 shadow-xl">
         <h2 className="text-base font-extrabold text-white mb-5 uppercase tracking-wider flex items-center gap-2">
           <Plus size={16} weight="bold" className="text-[#22c55e]" />
           Nova Partida
@@ -266,8 +266,8 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
         </form>
       </div>
 
-      {/* Lista de Partidas sem Resultado (Lado Direito, 2 Colunas) */}
-      <div className="lg:col-span-2 space-y-5">
+      {/* Lista de Partidas sem Resultado (Lado Direito, 8 Colunas) */}
+      <div className="lg:col-span-8 space-y-5">
         <h2 className="text-base font-extrabold text-white uppercase tracking-wider flex items-center gap-2 pb-2.5 border-b border-slate-800">
           <Calendar size={18} className="text-[#22c55e]" />
           Lançar Resultados
@@ -290,74 +290,76 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
               return (
                 <div
                   key={match.id}
-                  className="bg-[#1e293b] border border-slate-800 hover:border-slate-700 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-200"
+                  className="bg-[#1e293b] border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-md transition-all duration-200"
                 >
-                  {/* Info Jogo */}
-                  <div className="text-center sm:text-left min-w-[140px] space-y-1">
-                    <span className="bg-slate-900 px-2 py-0.5 rounded-full text-[9px] text-slate-400 uppercase font-extrabold inline-block">
-                      {match.stage} {match.group_name ? `• ${match.group_name}` : ''}
-                    </span>
-                    <div className="text-xs text-slate-500 font-bold block">
-                      {new Date(match.match_time).toLocaleDateString('pt-BR')} às{' '}
-                      {new Date(match.match_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-
-                  {/* Edição de Placar Simétrico */}
-                  <div className="flex flex-1 items-center justify-center gap-4 w-full">
-                    {/* Time Casa */}
-                    <div className="flex-1 flex justify-end">
-                      <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm justify-end w-full" />
-                    </div>
-                    
-                    {/* Inputs */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <input
-                        type="number"
-                        min="0"
-                        value={currentScore.home}
-                        onChange={(e) => handleScoreChange(match.id, 'home', e.target.value)}
-                        className="w-11 h-11 text-center font-black bg-slate-950 border border-slate-800 focus:border-[#22c55e] rounded-xl text-white text-base focus:outline-none"
-                        placeholder="-"
-                      />
-                      <span className="text-slate-600 font-black text-xs select-none">x</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={currentScore.away}
-                        onChange={(e) => handleScoreChange(match.id, 'away', e.target.value)}
-                        className="w-11 h-11 text-center font-black bg-slate-950 border border-slate-800 focus:border-[#22c55e] rounded-xl text-white text-base focus:outline-none"
-                        placeholder="-"
-                      />
+                  <div className="grid grid-cols-12 items-center gap-4 w-full text-sm">
+                    {/* Info Jogo */}
+                    <div className="col-span-12 md:col-span-3 text-center md:text-left space-y-1">
+                      <span className="bg-slate-900 px-2.5 py-0.5 rounded-full text-[9px] text-slate-400 uppercase font-bold inline-block">
+                        {match.stage} {match.group_name ? `• ${match.group_name}` : ''}
+                      </span>
+                      <div className="text-xs text-slate-500 font-extrabold block">
+                        {new Date(match.match_time).toLocaleDateString('pt-BR')} às{' '}
+                        {new Date(match.match_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
 
-                    {/* Time Fora */}
-                    <div className="flex-1 flex justify-start">
-                      <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm justify-start w-full" />
-                    </div>
-                  </div>
+                    {/* Edição de Placar Simétrico */}
+                    <div className="col-span-12 md:col-span-6 flex items-center justify-between gap-3">
+                      {/* Time Casa */}
+                      <div className="flex-1 flex justify-end truncate">
+                        <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm justify-end w-full" />
+                      </div>
+                      
+                      {/* Inputs */}
+                      <div className="flex items-center gap-1.5 shrink-0 mx-1">
+                        <input
+                          type="number"
+                          min="0"
+                          value={currentScore.home}
+                          onChange={(e) => handleScoreChange(match.id, 'home', e.target.value)}
+                          className="w-11 h-11 text-center font-black bg-slate-950 border border-slate-800 focus:border-[#22c55e] rounded-xl text-white text-base focus:outline-none"
+                          placeholder="-"
+                        />
+                        <span className="text-slate-600 font-black text-xs select-none">x</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={currentScore.away}
+                          onChange={(e) => handleScoreChange(match.id, 'away', e.target.value)}
+                          className="w-11 h-11 text-center font-black bg-slate-950 border border-slate-800 focus:border-[#22c55e] rounded-xl text-white text-base focus:outline-none"
+                          placeholder="-"
+                        />
+                      </div>
 
-                  {/* Ações */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleSaveResult(match.id)}
-                      disabled={isSaving}
-                      className="px-4 py-2.5 bg-slate-900 hover:bg-[#22c55e] hover:text-slate-950 text-[#22c55e] text-xs font-extrabold uppercase tracking-wider rounded-xl border border-slate-800 hover:border-transparent transition-all flex items-center gap-1.5 shadow-md"
-                    >
-                      {isSaving ? (
-                        <Spinner className="animate-spin" size={14} />
-                      ) : (
-                        <Check size={14} weight="bold" />
-                      )}
-                      Salvar Resultado
-                    </button>
-                    <button
-                      onClick={() => handleDeleteMatch(match.id)}
-                      className="p-2.5 bg-slate-900/60 hover:bg-rose-950/20 text-slate-500 hover:text-rose-450 rounded-xl transition-all"
-                      title="Excluir Partida"
-                    >
-                      <Trash size={14} />
-                    </button>
+                      {/* Time Fora */}
+                      <div className="flex-1 flex justify-start truncate">
+                        <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm justify-start w-full" />
+                      </div>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="col-span-12 md:col-span-3 flex items-center justify-center md:justify-end gap-2 border-t md:border-t-0 border-slate-800/60 pt-3.5 md:pt-0">
+                      <button
+                        onClick={() => handleSaveResult(match.id)}
+                        disabled={isSaving}
+                        className="px-3 py-2.5 bg-slate-900 hover:bg-[#22c55e] hover:text-slate-950 text-[#22c55e] text-xs font-extrabold uppercase tracking-wider rounded-xl border border-slate-800 hover:border-transparent transition-all flex items-center gap-1.5 shadow-md flex-grow md:flex-grow-0 justify-center"
+                      >
+                        {isSaving ? (
+                          <Spinner className="animate-spin" size={14} />
+                        ) : (
+                          <Check size={14} weight="bold" />
+                        )}
+                        Salvar Resultado
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMatch(match.id)}
+                        className="p-2.5 bg-slate-900/60 hover:bg-rose-950/20 text-slate-500 hover:text-rose-400 rounded-xl transition-all shrink-0"
+                        title="Excluir Partida"
+                      >
+                        <Trash size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
