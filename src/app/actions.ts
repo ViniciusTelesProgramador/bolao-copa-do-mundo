@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { RankingEntry } from '@/types';
 import { revalidatePath } from 'next/cache';
+import timeMapping from '@/lib/match_times_mapping.json';
 
 /**
  * Salva ou edita o palpite de um usuário para uma determinada partida.
@@ -25,12 +26,17 @@ export async function savePrediction(
     // 2. Buscar dados da partida para verificar o horário de início
     const { data: match, error: matchError } = await supabase
       .from('matches')
-      .select('match_time')
+      .select('match_time, home_team, away_team')
       .eq('id', matchId)
       .single();
 
     if (matchError || !match) {
       return { success: false, error: 'Partida não encontrada.' };
+    }
+
+    // Validar se é confronto indefinido ("A confirmar")
+    if (match.home_team === 'A confirmar' || match.away_team === 'A confirmar') {
+      return { success: false, error: 'Não é permitido palpitar em confrontos indefinidos.' };
     }
 
     // 3. Validar se a partida já começou
@@ -245,3 +251,99 @@ export async function createMatch(data: {
     return { success: false, error: error.message || 'Ocorreu um erro inesperado.' };
   }
 }
+
+/**
+ * Corrige o fuso horário de todos os jogos para o fuso horário oficial de Brasília/Fortaleza (BRT, UTC-3).
+ * Apenas o admin autenticado pode executar.
+ */
+export async function shiftAllMatchTimes() {
+  try {
+    const supabase = await createClient();
+
+    // 1. Obter usuário autenticado
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: 'Usuário não autenticado.' };
+    }
+
+    // 2. Verificar se o e-mail corresponde ao administrador
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) {
+      return { success: false, error: 'Acesso negado. Apenas o administrador pode ajustar horários.' };
+    }
+
+    // 3. Buscar todas as partidas
+    const { data: matches, error: fetchError } = await supabase
+      .from('matches')
+      .select('id, home_team, away_team, stage, group_name, match_time');
+
+    if (fetchError || !matches) {
+      return { success: false, error: 'Erro ao buscar partidas.' };
+    }
+
+    // 4. Mapear e atualizar cada partida
+    for (const match of matches) {
+      let correctTime: string | null = null;
+
+      if (match.stage === 'Fase de Grupos') {
+        // Encontrar por times
+        const mapped = timeMapping.find((item: any) => {
+          return item.stage === 'Fase de Grupos' &&
+            ((item.home_team === match.home_team && item.away_team === match.away_team) ||
+             (item.home_team === match.away_team && item.away_team === match.home_team));
+        });
+        if (mapped) {
+          correctTime = mapped.correct_time;
+        }
+      } else {
+        // Para mata-mata, encontrar por id primeiro (caso os IDs coincidam)
+        const mappedById = timeMapping.find((item: any) => item.id === match.id);
+        if (mappedById) {
+          correctTime = mappedById.correct_time;
+        } else {
+          // Fallback se o ID mudou (ex: se o banco foi recriado):
+          // Encontrar todos os jogos desta fase no banco, ordenados por match_time original
+          const stageMatches = matches
+            .filter((m) => m.stage === match.stage)
+            .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+          
+          const index = stageMatches.findIndex((m) => m.id === match.id);
+          
+          // Encontrar todos os mapeamentos desta fase, ordenados por correct_time
+          const mappedStage = timeMapping
+            .filter((item: any) => item.stage === match.stage)
+            .sort((a: any, b: any) => new Date(a.correct_time).getTime() - new Date(b.correct_time).getTime());
+          
+          if (index !== -1 && mappedStage[index]) {
+            correctTime = mappedStage[index].correct_time;
+          }
+        }
+      }
+
+      if (!correctTime) {
+        console.warn(`Aviso: Horário correto não encontrado para a partida ${match.home_team} vs ${match.away_team} (${match.stage})`);
+        continue;
+      }
+
+      const { error: updateError } = await supabase
+        .from('matches')
+        .update({ match_time: correctTime })
+        .eq('id', match.id);
+
+      if (updateError) {
+        console.error(`Erro ao atualizar partida ${match.id}:`, updateError);
+        return { success: false, error: `Erro ao atualizar partida: ${updateError.message}` };
+      }
+    }
+
+    revalidatePath('/admin');
+    revalidatePath('/palpites');
+    revalidatePath('/todos');
+    revalidatePath('/');
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+

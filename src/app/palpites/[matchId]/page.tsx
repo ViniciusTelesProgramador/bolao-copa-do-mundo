@@ -35,13 +35,7 @@ export default async function PalpiteMatchPage({ params }: PalpiteMatchPageProps
     redirect('/palpites');
   }
 
-  // 3. Bloquear acesso se a partida já começou
-  const isStarted = new Date(match.match_time) <= new Date();
-  if (isStarted) {
-    redirect('/palpites');
-  }
-
-  // 4. Buscar palpite existente do usuário para este jogo, se houver
+  // 3. Buscar palpite existente do usuário para este jogo, se houver
   const { data: predictionData } = await supabase
     .from('predictions')
     .select('*')

@@ -7,6 +7,8 @@ import { Match, Prediction } from '@/types';
 import { savePrediction } from '@/app/actions';
 import { ArrowLeft, Check, Spinner, Lock } from '@phosphor-icons/react';
 import Link from 'next/link';
+import { showToast } from './Toast';
+import { formatMatchDateTime } from '@/lib/date';
 
 interface PredictionFormProps {
   match: Match;
@@ -56,10 +58,11 @@ export default function PredictionForm({ match, initialPrediction }: PredictionF
         const result = await savePrediction(match.id, homeVal, awayVal);
         if (result.success) {
           setSuccess(true);
+          showToast(initialPrediction ? 'Palpite atualizado!' : 'Palpite salvo com sucesso!', 'success');
           router.refresh();
           setTimeout(() => {
             router.push('/palpites');
-          }, 1500);
+          }, 1000);
         } else {
           setError(result.error || 'Erro ao salvar palpite.');
         }
@@ -70,64 +73,59 @@ export default function PredictionForm({ match, initialPrediction }: PredictionF
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto bg-[#1e293b] border border-slate-700/60 rounded-2xl overflow-hidden shadow-2xl p-6 sm:p-8 animate-fadeIn">
+    <div className="w-full max-w-lg mx-auto bg-card border border-border-custom rounded-2xl overflow-hidden shadow-2xl p-6 sm:p-8 animate-fadeIn">
       {/* Voltar */}
-      <div className="mb-6">
+      <div className="mb-6 flex">
         <Link
           href="/palpites"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-wider"
+          className="inline-flex items-center justify-center min-h-[48px] min-w-[48px] px-3 gap-1.5 text-xs font-bold text-secondary hover:text-primary transition-colors uppercase tracking-wider rounded-xl border border-border-custom hover:bg-muted"
         >
           <ArrowLeft size={14} weight="bold" />
-          Voltar para Jogos
+          Voltar
         </Link>
       </div>
 
-      <h2 className="text-xl sm:text-2xl font-black text-white text-center mb-1">
+      <h2 className="text-xl sm:text-2xl font-black text-primary text-center mb-1 uppercase tracking-wider">
         {initialPrediction ? 'Editar Palpite' : 'Cadastrar Palpite'}
       </h2>
-      <p className="text-xs text-slate-400 font-bold uppercase tracking-wider text-center mb-6">
+      <p className="text-xs text-secondary font-bold uppercase tracking-wider text-center mb-6">
         {match.stage} {match.group_name ? `• ${match.group_name}` : ''}
       </p>
 
       {/* Info Partida */}
-      <div className="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col items-center">
-        <span className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-3">
-          Prazo: {matchTime.toLocaleDateString('pt-BR')} às {matchTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+      <div className="bg-muted/40 border border-border-custom/50 rounded-2xl p-4 sm:p-5 mb-6 flex flex-col items-center">
+        <span className="text-xs text-secondary font-bold uppercase tracking-wider mb-2 select-none">
+          Prazo: {formatMatchDateTime(match.match_time)}
         </span>
-
-        <div className="grid grid-cols-12 items-center w-full gap-2 mt-2">
-          {/* Time Casa */}
-          <div className="col-span-5 flex justify-start">
-            <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="w-full justify-start text-sm sm:text-base" />
+        {match.home_score !== null && match.away_score !== null ? (
+          <div className="mt-3 flex flex-col items-center gap-1 select-none">
+            <span className="text-[10px] text-secondary font-bold uppercase tracking-wider">Placar Oficial</span>
+            <span className="text-xl font-black text-accent-custom bg-accent-custom/10 border border-accent-custom/25 px-4 py-1 rounded-xl">
+              {match.home_score} x {match.away_score}
+            </span>
           </div>
-
-          {/* Divisor X */}
-          <div className="col-span-2 flex justify-center text-slate-600 font-black text-xs uppercase tracking-wider select-none">
-            vs
+        ) : isMatchStarted ? (
+          <div className="mt-3 bg-red-500/10 text-red-500 border border-red-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider animate-pulse select-none">
+            Jogo em Andamento
           </div>
-
-          {/* Time Fora */}
-          <div className="col-span-5 flex justify-end">
-            <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="w-full justify-end text-sm sm:text-base" />
-          </div>
-        </div>
+        ) : null}
       </div>
 
       {/* Aviso se jogo já começou */}
       {isMatchStarted && (
-        <div className="bg-slate-900/60 border border-slate-800 text-slate-400 rounded-xl p-4 mb-6 flex items-center justify-center gap-2 text-sm font-bold animate-fadeIn">
-          <Lock size={18} className="text-rose-500" />
+        <div className="bg-muted border border-border-custom text-secondary rounded-xl p-4 mb-6 flex items-center justify-center gap-2 text-sm font-bold animate-fadeIn">
+          <Lock size={18} className="text-rose-500 animate-pulse" />
           Palpites encerrados
         </div>
       )}
 
       {/* Formulário */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex items-center justify-center gap-6 sm:gap-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8">
           {/* Home Input */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase sm:hidden">
-              {match.home_team.substring(0, 3)}
+          <div className="flex flex-col items-center gap-3 flex-1 w-full sm:max-w-[140px]">
+            <span className="text-xs font-black text-secondary tracking-wider uppercase text-center flex flex-col items-center gap-1.5">
+              <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="justify-center scale-110 mb-1" />
             </span>
             <input
               type="number"
@@ -135,18 +133,19 @@ export default function PredictionForm({ match, initialPrediction }: PredictionF
               value={homeScore}
               onChange={(e) => setHomeScore(e.target.value)}
               disabled={isPending || isMatchStarted || success}
-              className="w-20 h-20 text-center text-4xl font-black bg-slate-950 border-2 border-slate-800 focus:border-[#22c55e] text-white rounded-2xl focus:outline-none transition-colors duration-200 disabled:opacity-45 disabled:cursor-not-allowed select-all"
+              className="w-20 h-20 text-center text-4xl font-black bg-base border-2 border-border-custom focus:border-accent-custom text-primary rounded-2xl focus:outline-none transition-colors duration-200 disabled:opacity-45 disabled:cursor-not-allowed select-all"
               placeholder="0"
               required
             />
           </div>
 
-          <span className="text-3xl font-black text-slate-700 select-none">-</span>
+          <span className="text-3xl font-black text-secondary/40 select-none hidden sm:inline">-</span>
+          <span className="text-xs font-bold text-secondary uppercase tracking-widest sm:hidden">vs</span>
 
           {/* Away Input */}
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase sm:hidden">
-              {match.away_team.substring(0, 3)}
+          <div className="flex flex-col items-center gap-3 flex-1 w-full sm:max-w-[140px]">
+            <span className="text-xs font-black text-secondary tracking-wider uppercase text-center flex flex-col items-center gap-1.5">
+              <FlagTeam flag={match.away_flag} name={match.away_team} reverse={false} className="justify-center scale-110 mb-1" />
             </span>
             <input
               type="number"
@@ -154,7 +153,7 @@ export default function PredictionForm({ match, initialPrediction }: PredictionF
               value={awayScore}
               onChange={(e) => setAwayScore(e.target.value)}
               disabled={isPending || isMatchStarted || success}
-              className="w-20 h-20 text-center text-4xl font-black bg-slate-950 border-2 border-slate-800 focus:border-[#22c55e] text-white rounded-2xl focus:outline-none transition-colors duration-200 disabled:opacity-45 disabled:cursor-not-allowed select-all"
+              className="w-20 h-20 text-center text-4xl font-black bg-base border-2 border-border-custom focus:border-accent-custom text-primary rounded-2xl focus:outline-none transition-colors duration-200 disabled:opacity-45 disabled:cursor-not-allowed select-all"
               placeholder="0"
               required
             />
@@ -163,15 +162,8 @@ export default function PredictionForm({ match, initialPrediction }: PredictionF
 
         {/* Notificações de erro ou sucesso */}
         {error && (
-          <div className="bg-rose-950/20 border border-rose-900/40 text-rose-450 rounded-xl p-3.5 text-xs font-bold text-center">
+          <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl p-3.5 text-xs font-bold text-center">
             {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-500/10 border border-green-500/20 text-[#22c55e] rounded-xl p-3.5 text-xs font-bold text-center flex items-center justify-center gap-2">
-            <Check size={16} weight="bold" />
-            Palpite salvo com sucesso!
           </div>
         )}
 
@@ -179,7 +171,7 @@ export default function PredictionForm({ match, initialPrediction }: PredictionF
         <button
           type="submit"
           disabled={isPending || isMatchStarted || success}
-          className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-[#22c55e] to-[#1ea34d] hover:from-[#1ea34d] hover:to-[#22c55e] text-slate-950 text-sm font-extrabold uppercase tracking-wider rounded-xl shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-accent-custom to-accent-hover text-slate-950 text-sm font-extrabold uppercase tracking-wider rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
           {isPending ? (
             <>

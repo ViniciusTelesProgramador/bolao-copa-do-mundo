@@ -4,9 +4,11 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
-import { saveMatchResult } from '@/app/actions';
-import { Plus, Check, Spinner, Trash, Calendar } from '@phosphor-icons/react';
+import { saveMatchResult, shiftAllMatchTimes } from '@/app/actions';
+import { Plus, Check, Spinner, Trash, Calendar, Clock } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
+import { showToast } from './Toast';
+import { formatMatchDateTime, parseLocalDateToUTC } from '@/lib/date';
 
 interface AdminPanelClientProps {
   matches: Match[];
@@ -34,6 +36,30 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<boolean>(false);
 
+  // Estados de fuso horário
+  const [isShifting, setIsShifting] = useState(false);
+
+  const handleShiftTimes = async () => {
+    if (!confirm('Deseja realmente sincronizar o fuso horário de TODOS os jogos para o horário oficial de Brasília/Fortaleza (UTC-3)?')) {
+      return;
+    }
+    
+    setIsShifting(true);
+    try {
+      const res = await shiftAllMatchTimes();
+      if (res.success) {
+        showToast('Horários sincronizados com Brasília (UTC-3) com sucesso!', 'success');
+        router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao sincronizar horários.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsShifting(false);
+    }
+  };
+
   // Filtra as partidas pendentes de resultado
   const pendingMatches = matches.filter((m) => m.home_score === null || m.away_score === null);
 
@@ -52,7 +78,7 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
   const handleSaveResult = async (matchId: string) => {
     const scores = editedScores[matchId];
     if (!scores || scores.home === '' || scores.away === '') {
-      alert('Preencha os dois placares antes de salvar!');
+      showToast('Preencha os dois placares antes de salvar!', 'error');
       return;
     }
 
@@ -60,7 +86,7 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
     const awayVal = parseInt(scores.away, 10);
 
     if (isNaN(homeVal) || isNaN(awayVal) || homeVal < 0 || awayVal < 0) {
-      alert('Insira placares válidos maiores ou iguais a zero!');
+      showToast('Insira placares válidos maiores ou iguais a zero!', 'error');
       return;
     }
 
@@ -69,16 +95,17 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
     try {
       const result = await saveMatchResult(matchId, homeVal, awayVal);
       if (result.success) {
+        showToast('Placar da partida salvo com sucesso!', 'success');
         // Limpa o estado local de edição daquele ID
         const updatedScores = { ...editedScores };
         delete updatedScores[matchId];
         setEditedScores(updatedScores);
         router.refresh();
       } else {
-        alert(result.error || 'Erro ao salvar o resultado.');
+        showToast(result.error || 'Erro ao salvar o resultado.', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Erro inesperado.');
+      showToast(err.message || 'Erro inesperado.', 'error');
     } finally {
       setSavingMatchId(null);
     }
@@ -104,12 +131,13 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
           away_team: awayTeam.trim(),
           home_flag: homeFlag.trim(),
           away_flag: awayFlag.trim(),
-          match_time: new Date(matchTime).toISOString(),
+          match_time: parseLocalDateToUTC(matchTime),
           stage,
           group_name: groupName.trim() || null
         });
 
         if (res.success) {
+          showToast('Partida cadastrada com sucesso!', 'success');
           setFormSuccess(true);
           setHomeTeam('');
           setAwayTeam('');
@@ -118,6 +146,7 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
           setMatchTime('');
           setGroupName('');
           router.refresh();
+          setTimeout(() => setFormSuccess(false), 2000);
         } else {
           setFormError(res.error || 'Erro ao cadastrar partida.');
         }
@@ -135,45 +164,48 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
     try {
       const { error } = await supabase.from('matches').delete().eq('id', matchId);
       if (error) {
-        alert(error.message);
+        showToast(error.message, 'error');
       } else {
+        showToast('Partida excluída com sucesso!', 'success');
         router.refresh();
       }
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message, 'error');
     }
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fadeIn">
-      {/* Formulário de Cadastro (Lado Esquerdo, 4 Colunas) */}
-      <div className="lg:col-span-4 bg-[#1e293b] border border-slate-700/60 rounded-2xl p-6 shadow-xl">
-        <h2 className="text-base font-extrabold text-white mb-5 uppercase tracking-wider flex items-center gap-2">
-          <Plus size={16} weight="bold" className="text-[#22c55e]" />
+      {/* Coluna Esquerda (Formulário + Fuso Horário) */}
+      <div className="lg:col-span-4 space-y-6">
+        {/* Formulário de Cadastro */}
+        <div className="bg-card border border-border-custom rounded-2xl p-6 shadow-xl transition-all duration-300">
+        <h2 className="text-base font-extrabold text-primary mb-5 uppercase tracking-wider flex items-center gap-2 select-none">
+          <Plus size={16} weight="bold" className="text-accent-custom" />
           Nova Partida
         </h2>
 
         <form onSubmit={handleCreateMatch} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mandante</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Mandante</label>
               <input
                 type="text"
                 value={homeTeam}
                 onChange={(e) => setHomeTeam(e.target.value)}
-                className="w-full h-10 px-3 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none font-medium"
+                className="w-full h-12 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none font-medium transition-colors"
                 placeholder="Brasil"
                 required
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bandeira (Emoji)</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Bandeira (Emoji)</label>
               <input
                 type="text"
                 value={homeFlag}
                 onChange={(e) => setHomeFlag(e.target.value)}
                 maxLength={4}
-                className="w-full h-10 px-3 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none text-center font-medium"
+                className="w-full h-12 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none text-center font-medium transition-colors"
                 placeholder="🇧🇷"
                 required
               />
@@ -181,49 +213,49 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Visitante</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Visitante</label>
               <input
                 type="text"
                 value={awayTeam}
                 onChange={(e) => setAwayTeam(e.target.value)}
-                className="w-full h-10 px-3 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none font-medium"
+                className="w-full h-12 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none font-medium transition-colors"
                 placeholder="Argentina"
                 required
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Bandeira (Emoji)</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Bandeira (Emoji)</label>
               <input
                 type="text"
                 value={awayFlag}
                 onChange={(e) => setAwayFlag(e.target.value)}
                 maxLength={4}
-                className="w-full h-10 px-3 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none text-center font-medium"
+                className="w-full h-12 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none text-center font-medium transition-colors"
                 placeholder="🇦🇷"
                 required
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Data & Horário</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Data & Horário</label>
             <input
               type="datetime-local"
               value={matchTime}
               onChange={(e) => setMatchTime(e.target.value)}
-              className="w-full h-10 px-3 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none font-medium"
+              className="w-full h-12 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none font-medium transition-colors"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Etapa</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Etapa</label>
               <select
                 value={stage}
                 onChange={(e) => setStage(e.target.value)}
-                className="w-full h-10 px-2 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none font-bold text-xs"
+                className="w-full h-12 px-2 bg-base border border-border-custom focus:border-accent-custom text-primary text-xs font-bold rounded-xl focus:outline-none transition-colors"
               >
                 <option value="Fase de Grupos">Fase de Grupos</option>
                 <option value="Oitavas de Final">Oitavas</option>
@@ -232,26 +264,26 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
                 <option value="Final">Final</option>
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grupo</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-wider block">Grupo</label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                className="w-full h-10 px-3 bg-slate-950 border border-slate-800 focus:border-[#22c55e] text-slate-100 text-sm rounded-xl focus:outline-none font-medium"
+                className="w-full h-12 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none font-medium transition-colors"
                 placeholder="Grupo A"
               />
             </div>
           </div>
 
           {formError && (
-            <div className="bg-rose-950/20 border border-rose-900/40 text-rose-455 text-xs font-bold rounded-xl p-3 text-center">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold rounded-xl p-3 text-center">
               {formError}
             </div>
           )}
 
           {formSuccess && (
-            <div className="bg-green-500/10 border border-green-500/20 text-[#22c55e] text-xs font-bold rounded-xl p-3 text-center">
+            <div className="bg-green-500/10 border border-green-500/20 text-accent-custom text-xs font-bold rounded-xl p-3 text-center">
               Jogo cadastrado com sucesso!
             </div>
           )}
@@ -259,23 +291,42 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full h-10 flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#22c55e] to-[#1ea34d] hover:from-[#1ea34d] hover:to-[#22c55e] text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-lg transition-all"
+            className="w-full h-12 flex items-center justify-center gap-1.5 bg-gradient-to-r from-accent-custom to-accent-hover text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isPending ? <Spinner size={15} className="animate-spin" /> : 'Cadastrar Jogo'}
           </button>
         </form>
       </div>
 
+      {/* Card de Configurações de Fuso Horário */}
+      <div className="bg-card border border-border-custom rounded-2xl p-6 shadow-xl transition-all duration-300">
+        <h2 className="text-sm font-extrabold text-primary mb-3 uppercase tracking-wider flex items-center gap-2 select-none">
+          <Clock size={16} className="text-amber-500" />
+          Fuso Horário (Fortaleza/BRT)
+        </h2>
+        <p className="text-xs text-secondary mb-4 leading-relaxed font-medium">
+          Caso os horários dos jogos estejam incorretos ou as partidas estejam sendo encerradas antes do horário oficial de Brasília, clique no botão abaixo para alinhar todos os jogos aos horários corretos de transmissão no Brasil.
+        </p>
+        <button
+          onClick={handleShiftTimes}
+          disabled={isShifting}
+          className="w-full h-11 flex items-center justify-center gap-1.5 bg-muted hover:bg-amber-500/10 text-amber-500 hover:text-amber-600 border border-border-custom hover:border-amber-500/20 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {isShifting ? <Spinner size={14} className="animate-spin" /> : 'Sincronizar com Brasília (UTC-3)'}
+        </button>
+      </div>
+    </div>
+
       {/* Lista de Partidas sem Resultado (Lado Direito, 8 Colunas) */}
       <div className="lg:col-span-8 space-y-5">
-        <h2 className="text-base font-extrabold text-white uppercase tracking-wider flex items-center gap-2 pb-2.5 border-b border-slate-800">
-          <Calendar size={18} className="text-[#22c55e]" />
+        <h2 className="text-base font-extrabold text-primary uppercase tracking-wider flex items-center gap-2 pb-2.5 border-b border-border-custom">
+          <Calendar size={18} className="text-accent-custom" />
           Lançar Resultados
         </h2>
 
         {pendingMatches.length === 0 ? (
-          <div className="bg-[#1e293b] border border-slate-800 rounded-2xl p-8 text-center text-slate-405 text-sm font-semibold">
-            Todas as partidas cadastradas possuem resultados finais!
+          <div className="bg-card border border-border-custom rounded-2xl p-10 text-center text-secondary text-sm font-bold shadow-md">
+            ⚽ Todas as partidas cadastradas possuem resultados finais!
           </div>
         ) : (
           <div className="space-y-4">
@@ -290,17 +341,16 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
               return (
                 <div
                   key={match.id}
-                  className="bg-[#1e293b] border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-md transition-all duration-200"
+                  className="bg-card border border-border-custom hover:border-secondary rounded-2xl p-5 shadow-md transition-all duration-200"
                 >
                   <div className="grid grid-cols-12 items-center gap-4 w-full text-sm">
                     {/* Info Jogo */}
                     <div className="col-span-12 md:col-span-3 text-center md:text-left space-y-1">
-                      <span className="bg-slate-900 px-2.5 py-0.5 rounded-full text-[9px] text-slate-400 uppercase font-bold inline-block">
+                      <span className="bg-muted border border-border-custom/50 px-2.5 py-0.5 rounded-full text-[9px] text-primary uppercase font-bold inline-block select-none">
                         {match.stage} {match.group_name ? `• ${match.group_name}` : ''}
                       </span>
-                      <div className="text-xs text-slate-500 font-extrabold block">
-                        {new Date(match.match_time).toLocaleDateString('pt-BR')} às{' '}
-                        {new Date(match.match_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      <div className="text-[11px] text-secondary font-extrabold block">
+                        {formatMatchDateTime(match.match_time)}
                       </div>
                     </div>
 
@@ -308,56 +358,58 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
                     <div className="col-span-12 md:col-span-6 flex items-center justify-between gap-3">
                       {/* Time Casa */}
                       <div className="flex-1 flex justify-end truncate">
-                        <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm justify-end w-full" />
+                        <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-xs sm:text-sm justify-end w-full" />
                       </div>
                       
-                      {/* Inputs */}
+                      {/* Inputs com tamanho de toque de 48px */}
                       <div className="flex items-center gap-1.5 shrink-0 mx-1">
                         <input
                           type="number"
                           min="0"
                           value={currentScore.home}
                           onChange={(e) => handleScoreChange(match.id, 'home', e.target.value)}
-                          className="w-11 h-11 text-center font-black bg-slate-950 border border-slate-800 focus:border-[#22c55e] rounded-xl text-white text-base focus:outline-none"
+                          className="w-12 h-12 text-center font-black bg-base border border-border-custom focus:border-accent-custom rounded-xl text-primary text-base focus:outline-none transition-colors select-all"
                           placeholder="-"
+                          required
                         />
-                        <span className="text-slate-600 font-black text-xs select-none">x</span>
+                        <span className="text-secondary/40 font-black text-xs select-none">x</span>
                         <input
                           type="number"
                           min="0"
                           value={currentScore.away}
                           onChange={(e) => handleScoreChange(match.id, 'away', e.target.value)}
-                          className="w-11 h-11 text-center font-black bg-slate-950 border border-slate-800 focus:border-[#22c55e] rounded-xl text-white text-base focus:outline-none"
+                          className="w-12 h-12 text-center font-black bg-base border border-border-custom focus:border-accent-custom rounded-xl text-primary text-base focus:outline-none transition-colors select-all"
                           placeholder="-"
+                          required
                         />
                       </div>
 
                       {/* Time Fora */}
                       <div className="flex-1 flex justify-start truncate">
-                        <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm justify-start w-full" />
+                        <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-xs sm:text-sm justify-start w-full" />
                       </div>
                     </div>
 
-                    {/* Ações */}
-                    <div className="col-span-12 md:col-span-3 flex items-center justify-center md:justify-end gap-2 border-t md:border-t-0 border-slate-800/60 pt-3.5 md:pt-0">
+                    {/* Ações (Alvos de Toque min 48px) */}
+                    <div className="col-span-12 md:col-span-3 flex items-center justify-center md:justify-end gap-2 border-t md:border-t-0 border-border-custom/40 pt-3.5 md:pt-0">
                       <button
                         onClick={() => handleSaveResult(match.id)}
                         disabled={isSaving}
-                        className="px-3 py-2.5 bg-slate-900 hover:bg-[#22c55e] hover:text-slate-950 text-[#22c55e] text-xs font-extrabold uppercase tracking-wider rounded-xl border border-slate-800 hover:border-transparent transition-all flex items-center gap-1.5 shadow-md flex-grow md:flex-grow-0 justify-center"
+                        className="h-12 px-4 bg-muted hover:bg-accent-custom hover:text-slate-950 text-accent-custom text-xs font-extrabold uppercase tracking-wider rounded-xl border border-border-custom hover:border-transparent transition-all flex items-center gap-1.5 shadow-md flex-grow md:flex-grow-0 justify-center cursor-pointer"
                       >
                         {isSaving ? (
                           <Spinner className="animate-spin" size={14} />
                         ) : (
                           <Check size={14} weight="bold" />
                         )}
-                        Salvar Resultado
+                        Salvar
                       </button>
                       <button
                         onClick={() => handleDeleteMatch(match.id)}
-                        className="p-2.5 bg-slate-900/60 hover:bg-rose-950/20 text-slate-500 hover:text-rose-400 rounded-xl transition-all shrink-0"
+                        className="w-12 h-12 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer"
                         title="Excluir Partida"
                       >
-                        <Trash size={14} />
+                        <Trash size={15} />
                       </button>
                     </div>
                   </div>

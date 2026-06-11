@@ -1,0 +1,802 @@
+[
+  {
+    "id": "309e4c0f-d990-404c-bd12-5e81bddbce94",
+    "home_team": "México",
+    "away_team": "África do Sul",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo A",
+    "correct_time": "2026-06-11T16:00:00-03"
+  },
+  {
+    "id": "acb663a3-ca49-4f4a-83dc-2299a55edb99",
+    "home_team": "Coreia do Sul",
+    "away_team": "Tchéquia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo A",
+    "correct_time": "2026-06-11T23:00:00-03"
+  },
+  {
+    "id": "6a3a1a80-739d-4942-8294-9e1c9505b002",
+    "home_team": "Canadá",
+    "away_team": "Bósnia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo B",
+    "correct_time": "2026-06-12T16:00:00-03"
+  },
+  {
+    "id": "27574328-54c3-4ccd-a3c5-4615a221cb79",
+    "home_team": "EUA",
+    "away_team": "Paraguai",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo D",
+    "correct_time": "2026-06-12T22:00:00-03"
+  },
+  {
+    "id": "6565558e-534d-4867-8930-7391885f7141",
+    "home_team": "Catar",
+    "away_team": "Suíça",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo B",
+    "correct_time": "2026-06-13T16:00:00-03"
+  },
+  {
+    "id": "5d41e552-6b14-4d46-acc2-7399342f0216",
+    "home_team": "Austrália",
+    "away_team": "Turquia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo D",
+    "correct_time": "2026-06-14T01:00:00-03"
+  },
+  {
+    "id": "56b6facd-268d-45c9-8762-7fa176544d61",
+    "home_team": "Brasil",
+    "away_team": "Haiti",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo C",
+    "correct_time": "2026-06-19T21:30:00-03"
+  },
+  {
+    "id": "3d10b685-2ce8-4229-8168-ac7a8802f20c",
+    "home_team": "Marrocos",
+    "away_team": "Escócia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo C",
+    "correct_time": "2026-06-19T19:00:00-03"
+  },
+  {
+    "id": "5ff8c49d-c19a-4fc3-a830-ccf882142c36",
+    "home_team": "Alemanha",
+    "away_team": "Curaçao",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo E",
+    "correct_time": "2026-06-14T14:00:00-03"
+  },
+  {
+    "id": "90833936-9b68-4c79-bfb0-1858894d1cee",
+    "home_team": "Japão",
+    "away_team": "Holanda",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo F",
+    "correct_time": "2026-06-14T17:00:00-03"
+  },
+  {
+    "id": "86872760-2ecc-4fc5-8711-3ee6d942461a",
+    "home_team": "Costa do Marfim",
+    "away_team": "Equador",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo E",
+    "correct_time": "2026-06-14T20:00:00-03"
+  },
+  {
+    "id": "e06308cd-5da9-4184-8faa-8942f8d66f4b",
+    "home_team": "Suécia",
+    "away_team": "Tunísia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo F",
+    "correct_time": "2026-06-14T23:00:00-03"
+  },
+  {
+    "id": "7846316d-f2fc-4fa4-988d-18f0a3521c07",
+    "home_team": "Bélgica",
+    "away_team": "Egito",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo G",
+    "correct_time": "2026-06-15T16:00:00-03"
+  },
+  {
+    "id": "aeb406d4-adba-4463-9833-15e0d9a59051",
+    "home_team": "México",
+    "away_team": "Coreia do Sul",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo A",
+    "correct_time": "2026-06-18T22:00:00-03"
+  },
+  {
+    "id": "cba4c7c7-2200-4c8a-b651-446166ea0b79",
+    "home_team": "Espanha",
+    "away_team": "Cabo Verde",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo H",
+    "correct_time": "2026-06-15T13:00:00-03"
+  },
+  {
+    "id": "b7d6d224-a9ab-4bb7-b8c3-86b8d8d984e2",
+    "home_team": "Irã",
+    "away_team": "Nova Zelândia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo G",
+    "correct_time": "2026-06-15T22:00:00-03"
+  },
+  {
+    "id": "f59ea59a-1dd8-4faf-97c4-834e4305c02a",
+    "home_team": "África do Sul",
+    "away_team": "Tchéquia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo A",
+    "correct_time": "2026-06-18T13:00:00-03"
+  },
+  {
+    "id": "b9ceb263-7da5-44cd-af9f-8a70ad876c70",
+    "home_team": "Arábia Saudita",
+    "away_team": "Uruguai",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo H",
+    "correct_time": "2026-06-15T19:00:00-03"
+  },
+  {
+    "id": "0d308a3e-92bb-4532-a098-7afd3b0b96a9",
+    "home_team": "França",
+    "away_team": "Senegal",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo I",
+    "correct_time": "2026-06-16T16:00:00-03"
+  },
+  {
+    "id": "4de74f7e-7d2f-4ebb-aea5-0658ec6200e8",
+    "home_team": "Canadá",
+    "away_team": "Catar",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo B",
+    "correct_time": "2026-06-18T19:00:00-03"
+  },
+  {
+    "id": "fd2a3028-defa-4ba2-a041-f284c69ce232",
+    "home_team": "Argentina",
+    "away_team": "Argélia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo J",
+    "correct_time": "2026-06-16T22:00:00-03"
+  },
+  {
+    "id": "0272ad12-38a7-488a-ae18-a567e67044d3",
+    "home_team": "EUA",
+    "away_team": "Austrália",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo D",
+    "correct_time": "2026-06-19T16:00:00-03"
+  },
+  {
+    "id": "457df3a6-767e-43f8-b70d-6e4667542b99",
+    "home_team": "Iraque",
+    "away_team": "Noruega",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo I",
+    "correct_time": "2026-06-16T19:00:00-03"
+  },
+  {
+    "id": "31772482-e689-459a-a5ab-078cd080d8d5",
+    "home_team": "Bósnia",
+    "away_team": "Suíça",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo B",
+    "correct_time": "2026-06-18T16:00:00-03"
+  },
+  {
+    "id": "6b6ab806-adcb-42bd-9563-482fb5ed40f4",
+    "home_team": "Áustria",
+    "away_team": "Jordânia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo J",
+    "correct_time": "2026-06-17T01:00:00-03"
+  },
+  {
+    "id": "956298eb-3979-49be-a9c6-8191996f45b1",
+    "home_team": "Paraguai",
+    "away_team": "Turquia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo D",
+    "correct_time": "2026-06-20T00:00:00-03"
+  },
+  {
+    "id": "07b81a1a-471f-4863-9b7b-524466faf708",
+    "home_team": "Brasil",
+    "away_team": "Marrocos",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo C",
+    "correct_time": "2026-06-13T19:00:00-03"
+  },
+  {
+    "id": "f197003e-697d-47a0-8bbd-cbd5ef7063f0",
+    "home_team": "Portugal",
+    "away_team": "RD Congo",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo K",
+    "correct_time": "2026-06-17T14:00:00-03"
+  },
+  {
+    "id": "6cb3def6-0560-4704-a38a-459f49c3abb2",
+    "home_team": "Inglaterra",
+    "away_team": "Croácia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo L",
+    "correct_time": "2026-06-17T17:00:00-03"
+  },
+  {
+    "id": "da2caefb-726d-4158-bc10-87d7891bfc96",
+    "home_team": "Uzbequistão",
+    "away_team": "Colômbia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo K",
+    "correct_time": "2026-06-17T23:00:00-03"
+  },
+  {
+    "id": "ffaf246a-987c-4b10-b343-3318baf03184",
+    "home_team": "Haiti",
+    "away_team": "Escócia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo C",
+    "correct_time": "2026-06-13T22:00:00-03"
+  },
+  {
+    "id": "b18a0c7b-5972-4b7e-8b12-bfbcf096a539",
+    "home_team": "Gana",
+    "away_team": "Panamá",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo L",
+    "correct_time": "2026-06-17T20:00:00-03"
+  },
+  {
+    "id": "98aea33f-28b1-407d-b70f-81ff078f6a42",
+    "home_team": "Alemanha",
+    "away_team": "Costa do Marfim",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo E",
+    "correct_time": "2026-06-20T17:00:00-03"
+  },
+  {
+    "id": "187788e3-2c3c-4073-88d5-b8710bdd6654",
+    "home_team": "Japão",
+    "away_team": "Suécia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo F",
+    "correct_time": "2026-06-25T20:00:00-03"
+  },
+  {
+    "id": "f5e339c9-043d-4ecd-8fc6-0c390545c6f5",
+    "home_team": "Curaçao",
+    "away_team": "Equador",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo E",
+    "correct_time": "2026-06-20T21:00:00-03"
+  },
+  {
+    "id": "1fca2ac4-80e1-45fc-86ac-164d99c9b1bf",
+    "home_team": "Holanda",
+    "away_team": "Tunísia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo F",
+    "correct_time": "2026-06-25T20:00:00-03"
+  },
+  {
+    "id": "f0681468-2af0-4649-8e87-4c094dcafb17",
+    "home_team": "Bélgica",
+    "away_team": "Irã",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo G",
+    "correct_time": "2026-06-21T16:00:00-03"
+  },
+  {
+    "id": "ffa1425a-a4b0-41e2-8583-f35f64e27ca9",
+    "home_team": "Espanha",
+    "away_team": "Arábia Saudita",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo H",
+    "correct_time": "2026-06-21T13:00:00-03"
+  },
+  {
+    "id": "38a851f5-e29a-49e0-8b21-4fc9eaf932e3",
+    "home_team": "México",
+    "away_team": "Tchéquia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo A",
+    "correct_time": "2026-06-24T22:00:00-03"
+  },
+  {
+    "id": "f5f2c9fb-f752-4607-9a7d-03f7a8c70e1d",
+    "home_team": "Egito",
+    "away_team": "Nova Zelândia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo G",
+    "correct_time": "2026-06-21T22:00:00-03"
+  },
+  {
+    "id": "97bf6ce6-35fe-473d-83c9-d2e11c812ab0",
+    "home_team": "Cabo Verde",
+    "away_team": "Uruguai",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo H",
+    "correct_time": "2026-06-21T19:00:00-03"
+  },
+  {
+    "id": "3a352c80-0f8f-4770-a1f6-634a362351ec",
+    "home_team": "África do Sul",
+    "away_team": "Coreia do Sul",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo A",
+    "correct_time": "2026-06-24T22:00:00-03"
+  },
+  {
+    "id": "8b98a717-5912-4d04-a125-1b2ab98bbfb3",
+    "home_team": "França",
+    "away_team": "Iraque",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo I",
+    "correct_time": "2026-06-22T18:00:00-03"
+  },
+  {
+    "id": "791fd7ef-5c08-4702-b78a-7ff0291da011",
+    "home_team": "EUA",
+    "away_team": "Turquia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo D",
+    "correct_time": "2026-06-25T23:00:00-03"
+  },
+  {
+    "id": "58c363ff-fed6-4888-97bf-2d1b0bdd5227",
+    "home_team": "Canadá",
+    "away_team": "Suíça",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo B",
+    "correct_time": "2026-06-24T16:00:00-03"
+  },
+  {
+    "id": "3f626c82-d591-41e4-9624-2e9cbe8f0b97",
+    "home_team": "Argentina",
+    "away_team": "Áustria",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo J",
+    "correct_time": "2026-06-22T14:00:00-03"
+  },
+  {
+    "id": "2e240fc4-aa0d-4fbe-8be3-b8d4d786ace7",
+    "home_team": "Senegal",
+    "away_team": "Noruega",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo I",
+    "correct_time": "2026-06-22T21:00:00-03"
+  },
+  {
+    "id": "4a6bdca2-a709-4ed1-ba9b-b2a9d07137af",
+    "home_team": "Paraguai",
+    "away_team": "Austrália",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo D",
+    "correct_time": "2026-06-25T23:00:00-03"
+  },
+  {
+    "id": "ba763f35-4ea7-4eca-a738-e763f68b5083",
+    "home_team": "Argélia",
+    "away_team": "Jordânia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo J",
+    "correct_time": "2026-06-23T00:00:00-03"
+  },
+  {
+    "id": "52f900f7-701e-473e-98f0-5dc41bc867d6",
+    "home_team": "Bósnia",
+    "away_team": "Catar",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo B",
+    "correct_time": "2026-06-24T16:00:00-03"
+  },
+  {
+    "id": "ad45479f-1d12-4966-9558-af7a409ff0f7",
+    "home_team": "Portugal",
+    "away_team": "Uzbequistão",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo K",
+    "correct_time": "2026-06-23T14:00:00-03"
+  },
+  {
+    "id": "64e8257b-d760-4f04-a8cc-0b419be9a9c3",
+    "home_team": "Brasil",
+    "away_team": "Escócia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo C",
+    "correct_time": "2026-06-24T19:00:00-03"
+  },
+  {
+    "id": "1094562e-c38a-4ba5-ab74-f16a010678f5",
+    "home_team": "Inglaterra",
+    "away_team": "Gana",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo L",
+    "correct_time": "2026-06-23T17:00:00-03"
+  },
+  {
+    "id": "530f1533-9d20-4d2f-9ad1-96d52ba4fb26",
+    "home_team": "RD Congo",
+    "away_team": "Colômbia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo K",
+    "correct_time": "2026-06-23T23:00:00-03"
+  },
+  {
+    "id": "3ae78f61-7b68-49ce-93f6-55e83822e0de",
+    "home_team": "Croácia",
+    "away_team": "Panamá",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo L",
+    "correct_time": "2026-06-23T20:00:00-03"
+  },
+  {
+    "id": "3835777a-eda9-4292-926b-defb40f544d3",
+    "home_team": "Haiti",
+    "away_team": "Marrocos",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo C",
+    "correct_time": "2026-06-24T19:00:00-03"
+  },
+  {
+    "id": "925038b9-a6d3-4222-8b8e-069dc79e912b",
+    "home_team": "Japão",
+    "away_team": "Tunísia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo F",
+    "correct_time": "2026-06-21T01:00:00-03"
+  },
+  {
+    "id": "3ea967e9-956a-4346-a364-26599f1704a7",
+    "home_team": "Alemanha",
+    "away_team": "Equador",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo E",
+    "correct_time": "2026-06-25T17:00:00-03"
+  },
+  {
+    "id": "5d60e3af-7192-49c3-a29e-f2e394ee7e2b",
+    "home_team": "Holanda",
+    "away_team": "Suécia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo F",
+    "correct_time": "2026-06-20T14:00:00-03"
+  },
+  {
+    "id": "ae0a0bea-c281-441f-ba1e-ff1ae4628ca4",
+    "home_team": "Curaçao",
+    "away_team": "Costa do Marfim",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo E",
+    "correct_time": "2026-06-25T17:00:00-03"
+  },
+  {
+    "id": "a7d6bd6f-aec1-4237-a5a3-00b6fdaf3d09",
+    "home_team": "Espanha",
+    "away_team": "Uruguai",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo H",
+    "correct_time": "2026-06-26T21:00:00-03"
+  },
+  {
+    "id": "d7ebb6ff-ebcb-4337-8752-23498ecb9be7",
+    "home_team": "Bélgica",
+    "away_team": "Nova Zelândia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo G",
+    "correct_time": "2026-06-27T00:00:00-03"
+  },
+  {
+    "id": "5c79adde-ae66-4307-910a-877f38064028",
+    "home_team": "Cabo Verde",
+    "away_team": "Arábia Saudita",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo H",
+    "correct_time": "2026-06-26T21:00:00-03"
+  },
+  {
+    "id": "f02841b6-3e4b-4642-b822-b8291a7df97f",
+    "home_team": "Egito",
+    "away_team": "Irã",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo G",
+    "correct_time": "2026-06-27T00:00:00-03"
+  },
+  {
+    "id": "1df2e861-5c30-428f-b36b-67a3d0ba0cea",
+    "home_team": "Argentina",
+    "away_team": "Jordânia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo J",
+    "correct_time": "2026-06-27T23:00:00-03"
+  },
+  {
+    "id": "8b92e506-eab8-4a22-8851-5f6ef382cd7a",
+    "home_team": "França",
+    "away_team": "Noruega",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo I",
+    "correct_time": "2026-06-26T16:00:00-03"
+  },
+  {
+    "id": "52a0e969-8d7d-48cf-8ae3-968b4f3e37dc",
+    "home_team": "Argélia",
+    "away_team": "Áustria",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo J",
+    "correct_time": "2026-06-27T23:00:00-03"
+  },
+  {
+    "id": "2afae918-ae51-4b45-b558-34b4852582f7",
+    "home_team": "Senegal",
+    "away_team": "Iraque",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo I",
+    "correct_time": "2026-06-26T16:00:00-03"
+  },
+  {
+    "id": "d1c58bf6-b747-4aef-84ab-85fe543afe5a",
+    "home_team": "Inglaterra",
+    "away_team": "Panamá",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo L",
+    "correct_time": "2026-06-27T18:00:00-03"
+  },
+  {
+    "id": "22128a10-0068-4f7b-bc16-2f59ed1ec235",
+    "home_team": "Portugal",
+    "away_team": "Colômbia",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo K",
+    "correct_time": "2026-06-27T20:30:00-03"
+  },
+  {
+    "id": "9038e094-20dc-4979-8420-c021b7523df6",
+    "home_team": "Croácia",
+    "away_team": "Gana",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo L",
+    "correct_time": "2026-06-27T18:00:00-03"
+  },
+  {
+    "id": "f4ab70ce-3a7c-4624-9289-085231738f53",
+    "home_team": "RD Congo",
+    "away_team": "Uzbequistão",
+    "stage": "Fase de Grupos",
+    "group_name": "Grupo K",
+    "correct_time": "2026-06-27T20:30:00-03"
+  },
+  {
+    "id": "267a94fe-ae4f-4599-97a4-51e5b3241d3f",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-28T16:00:00-03"
+  },
+  {
+    "id": "0a304737-57e3-4919-9991-b3e59b0f30d9",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-29T14:00:00-03"
+  },
+  {
+    "id": "c265c9c6-a0f5-40b0-9a76-a5e0647f0a5f",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-29T17:30:00-03"
+  },
+  {
+    "id": "5e1eb00d-a973-4a24-b9dd-8b3e14f81557",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-29T22:00:00-03"
+  },
+  {
+    "id": "5e95340b-0219-4285-aacc-acb4e9563488",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-30T14:00:00-03"
+  },
+  {
+    "id": "55b12dca-50d9-4479-9490-da28c907647d",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-30T18:00:00-03"
+  },
+  {
+    "id": "a78d3468-f8d4-4ca4-bbac-3f55e990323f",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-06-30T22:00:00-03"
+  },
+  {
+    "id": "bb78cd73-702e-4216-b622-ab6db9a3fd9e",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-07-01T13:00:00-03"
+  },
+  {
+    "id": "dbca9a65-bd61-4748-97ba-85bf15451742",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-07-01T17:00:00-03"
+  },
+  {
+    "id": "c7e0aa94-12bd-4a4b-b8ee-577ce9d08596",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-07-01T21:00:00-03"
+  },
+  {
+    "id": "b852bfeb-e9fc-46ea-8cf9-69860dfe8ce7",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-07-02T16:00:00-03"
+  },
+  {
+    "id": "d38c28e4-5a89-428d-be3d-e776ae62d23e",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Fase de 32",
+    "group_name": null,
+    "correct_time": "2026-07-02T20:00:00-03"
+  },
+  {
+    "id": "1cd57a5c-4941-496c-b7ee-d099c09b2e41",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-04T14:00:00-03"
+  },
+  {
+    "id": "3587c657-e80a-4f31-805f-6945fed88166",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-04T18:00:00-03"
+  },
+  {
+    "id": "87327385-b72b-4952-bc05-a7d5a2394a7b",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-05T17:00:00-03"
+  },
+  {
+    "id": "f051bcef-27d2-4f88-9a17-fd7b26334c0c",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-05T21:00:00-03"
+  },
+  {
+    "id": "7ef20cfe-fe53-4484-81f7-f744217786c7",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-06T16:00:00-03"
+  },
+  {
+    "id": "fe539e08-3b4b-480c-b1b8-e0d8518ed4d3",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-06T21:00:00-03"
+  },
+  {
+    "id": "4836d540-ab31-464f-9c85-34eb3c7fe66b",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-07T13:00:00-03"
+  },
+  {
+    "id": "2673ed4d-a700-4fe9-bb39-21769493b7d6",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Oitavas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-07T17:00:00-03"
+  },
+  {
+    "id": "19bc8be9-99c3-4840-b76e-dffb264334be",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Quartas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-09T17:00:00-03"
+  },
+  {
+    "id": "d5d226ec-7cbf-4bba-bfc3-33fc874dc79c",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Quartas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-10T16:00:00-03"
+  },
+  {
+    "id": "faaabf4b-357c-4b24-b943-b6196aa5cf36",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Quartas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-11T18:00:00-03"
+  },
+  {
+    "id": "f532b16f-0855-49ba-b0ef-f5bfcf0ae68d",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Quartas de Final",
+    "group_name": null,
+    "correct_time": "2026-07-11T22:00:00-03"
+  },
+  {
+    "id": "032b9133-daa3-43f7-a308-11586c4e4bfe",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Semifinal",
+    "group_name": null,
+    "correct_time": "2026-07-14T16:00:00-03"
+  },
+  {
+    "id": "ee5b11e2-6d6b-4696-bd06-9a829c72fca3",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Semifinal",
+    "group_name": null,
+    "correct_time": "2026-07-15T16:00:00-03"
+  },
+  {
+    "id": "c63b64e4-e167-4d90-9a70-6f94c3d73c17",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Decisão do 3º Lugar",
+    "group_name": null,
+    "correct_time": "2026-07-18T18:00:00-03"
+  },
+  {
+    "id": "47288aa0-0604-4290-a733-6af491c8f0b8",
+    "home_team": "A confirmar",
+    "away_team": "A confirmar",
+    "stage": "Final",
+    "group_name": null,
+    "correct_time": "2026-07-19T16:00:00-03"
+  }
+]

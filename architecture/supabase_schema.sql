@@ -94,9 +94,26 @@ CREATE POLICY "Jogos são visíveis por todos"
     FOR SELECT
     USING (true);
 
--- Sem políticas para INSERT/UPDATE/DELETE para usuários comuns.
--- Desta forma, apenas a service_role (usada pelo Admin no painel via Server Actions com permissão especial)
--- ou triggers do sistema podem editar esta tabela.
+-- Políticas para Admin (identificado pelo email do admin)
+CREATE POLICY "Admins podem atualizar partidas"
+    ON public.matches
+    FOR UPDATE
+    TO authenticated
+    USING (auth.jwt() ->> 'email' = 'developer.teles@gmail.com')
+    WITH CHECK (auth.jwt() ->> 'email' = 'developer.teles@gmail.com');
+
+CREATE POLICY "Admins podem inserir partidas"
+    ON public.matches
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.jwt() ->> 'email' = 'developer.teles@gmail.com');
+
+CREATE POLICY "Admins podem deletar partidas"
+    ON public.matches
+    FOR DELETE
+    TO authenticated
+    USING (auth.jwt() ->> 'email' = 'developer.teles@gmail.com');
+
 
 
 -- =========================================================================
@@ -120,20 +137,12 @@ CREATE TABLE IF NOT EXISTS public.predictions (
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS para predictions:
--- 1. Leitura: O usuário pode ver os próprios palpites a qualquer momento.
---    Palpites de outros usuários só são visíveis se a partida correspondente já tiver começado.
-CREATE POLICY "Leitura de palpites própria ou após início do jogo"
+-- 1. Leitura: Qualquer usuário autenticado pode ver todos os palpites a qualquer momento.
+CREATE POLICY "Leitura de palpites para usuários autenticados"
     ON public.predictions
     FOR SELECT
     TO authenticated
-    USING (
-        auth.uid() = user_id 
-        OR EXISTS (
-            SELECT 1 FROM public.matches 
-            WHERE matches.id = match_id 
-            AND matches.match_time <= now()
-        )
-    );
+    USING (true);
 
 -- 2. Inserção: Usuário só insere seu próprio palpite e APENAS se o jogo ainda não começou.
 CREATE POLICY "Usuários inserem os próprios palpites antes do jogo começar"
@@ -272,16 +281,169 @@ CREATE TRIGGER on_match_score_update
 -- Agendados a partir de 11/06/2026 (após o horário atual da inicialização)
 -- =========================================================================
 
+-- =========================================================================
+-- 5. POPULAR DADOS INICIAIS (104 Jogos Reais da Copa do Mundo 2026)
+-- Fase de grupos com times reais e mata-mata como "A confirmar"
+-- =========================================================================
+
+TRUNCATE TABLE public.matches CASCADE;
+
 INSERT INTO public.matches (home_team, away_team, home_flag, away_flag, match_time, stage, group_name)
 VALUES
-    ('Estados Unidos', 'México', '🇺🇸', '🇲🇽', '2026-06-11 14:00:00-03', 'Fase de Grupos', 'Grupo A'),
-    ('Canadá', 'Japão', '🇨🇦', '🇯🇵', '2026-06-11 18:00:00-03', 'Fase de Grupos', 'Grupo A'),
-    ('Brasil', 'Argentina', '🇧🇷', '🇦🇷', '2026-06-12 13:00:00-03', 'Fase de Grupos', 'Grupo B'),
-    ('Espanha', 'Alemanha', '🇪🇸', '🇩🇪', '2026-06-12 16:00:00-03', 'Fase de Grupos', 'Grupo B'),
-    ('França', 'Itália', '🇫🇷', '🇮🇹', '2026-06-13 10:00:00-03', 'Fase de Grupos', 'Grupo C'),
-    ('Inglaterra', 'Senegal', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🇸🇳', '2026-06-13 14:00:00-03', 'Fase de Grupos', 'Grupo C'),
-    ('Portugal', 'Uruguai', '🇵🇹', '🇺🇾', '2026-06-14 13:00:00-03', 'Fase de Grupos', 'Grupo D'),
-    ('Bélgica', 'Marrocos', '🇧🇪', '🇲🇦', '2026-06-14 16:00:00-03', 'Fase de Grupos', 'Grupo D'),
-    ('Holanda', 'Equador', '🇳🇱', '🇪🇨', '2026-06-15 14:00:00-03', 'Fase de Grupos', 'Grupo E'),
-    ('Croácia', 'Coreia do Sul', '🇭🇷', '🇰🇷', '2026-06-15 18:00:00-03', 'Fase de Grupos', 'Grupo E')
+    -- Grupo A
+    ('México', 'África do Sul', '🇲🇽', '🇿🇦', '2026-06-11T16:00:00-03', 'Fase de Grupos', 'Grupo A'),
+    ('Coreia do Sul', 'Tchéquia', '🇰🇷', '🇨🇿', '2026-06-11T23:00:00-03', 'Fase de Grupos', 'Grupo A'),
+    ('México', 'Coreia do Sul', '🇲🇽', '🇰🇷', '2026-06-18T22:00:00-03', 'Fase de Grupos', 'Grupo A'),
+    ('África do Sul', 'Tchéquia', '🇿🇦', '🇨🇿', '2026-06-18T13:00:00-03', 'Fase de Grupos', 'Grupo A'),
+    ('México', 'Tchéquia', '🇲🇽', '🇨🇿', '2026-06-24T22:00:00-03', 'Fase de Grupos', 'Grupo A'),
+    ('África do Sul', 'Coreia do Sul', '🇿🇦', '🇰🇷', '2026-06-24T22:00:00-03', 'Fase de Grupos', 'Grupo A'),
+
+    -- Grupo B
+    ('Canadá', 'Bósnia', '🇨🇦', '🇧🇦', '2026-06-12T16:00:00-03', 'Fase de Grupos', 'Grupo B'),
+    ('Catar', 'Suíça', '🇶🇦', '🇨🇭', '2026-06-13T16:00:00-03', 'Fase de Grupos', 'Grupo B'),
+    ('Canadá', 'Catar', '🇨🇦', '🇶🇦', '2026-06-18T19:00:00-03', 'Fase de Grupos', 'Grupo B'),
+    ('Bósnia', 'Suíça', '🇧🇦', '🇨🇭', '2026-06-18T16:00:00-03', 'Fase de Grupos', 'Grupo B'),
+    ('Canadá', 'Suíça', '🇨🇦', '🇨🇭', '2026-06-24T16:00:00-03', 'Fase de Grupos', 'Grupo B'),
+    ('Bósnia', 'Catar', '🇧🇦', '🇶🇦', '2026-06-24T16:00:00-03', 'Fase de Grupos', 'Grupo B'),
+
+    -- Grupo C
+    ('Brasil', 'Haiti', '🇧🇷', '🇭🇹', '2026-06-19T21:30:00-03', 'Fase de Grupos', 'Grupo C'),
+    ('Marrocos', 'Escócia', '🇲🇦', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '2026-06-19T19:00:00-03', 'Fase de Grupos', 'Grupo C'),
+    ('Brasil', 'Marrocos', '🇧🇷', '🇲🇦', '2026-06-13T19:00:00-03', 'Fase de Grupos', 'Grupo C'),
+    ('Haiti', 'Escócia', '🇭🇹', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '2026-06-13T22:00:00-03', 'Fase de Grupos', 'Grupo C'),
+    ('Brasil', 'Escócia', '🇧🇷', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '2026-06-24T19:00:00-03', 'Fase de Grupos', 'Grupo C'),
+    ('Haiti', 'Marrocos', '🇭🇹', '🇲🇦', '2026-06-24T19:00:00-03', 'Fase de Grupos', 'Grupo C'),
+
+    -- Grupo D
+    ('EUA', 'Paraguai', '🇺🇸', '🇵🇾', '2026-06-12T22:00:00-03', 'Fase de Grupos', 'Grupo D'),
+    ('Austrália', 'Turquia', '🇦🇺', '🇹🇷', '2026-06-14T01:00:00-03', 'Fase de Grupos', 'Grupo D'),
+    ('EUA', 'Austrália', '🇺🇸', '🇦🇺', '2026-06-19T16:00:00-03', 'Fase de Grupos', 'Grupo D'),
+    ('Paraguai', 'Turquia', '🇵🇾', '🇹🇷', '2026-06-20T00:00:00-03', 'Fase de Grupos', 'Grupo D'),
+    ('EUA', 'Turquia', '🇺🇸', '🇹🇷', '2026-06-25T23:00:00-03', 'Fase de Grupos', 'Grupo D'),
+    ('Paraguai', 'Austrália', '🇵🇾', '🇦🇺', '2026-06-25T23:00:00-03', 'Fase de Grupos', 'Grupo D'),
+
+    -- Grupo E
+    ('Alemanha', 'Curaçao', '🇩🇪', '🇨🇼', '2026-06-14T14:00:00-03', 'Fase de Grupos', 'Grupo E'),
+    ('Costa do Marfim', 'Equador', '🇨🇮', '🇪🇨', '2026-06-14T20:00:00-03', 'Fase de Grupos', 'Grupo E'),
+    ('Alemanha', 'Costa do Marfim', '🇩🇪', '🇨🇮', '2026-06-20T17:00:00-03', 'Fase de Grupos', 'Grupo E'),
+    ('Curaçao', 'Equador', '🇨🇼', '🇪🇨', '2026-06-20T21:00:00-03', 'Fase de Grupos', 'Grupo E'),
+    ('Alemanha', 'Equador', '🇩🇪', '🇪🇨', '2026-06-25T17:00:00-03', 'Fase de Grupos', 'Grupo E'),
+    ('Curaçao', 'Costa do Marfim', '🇨🇼', '🇨🇮', '2026-06-25T17:00:00-03', 'Fase de Grupos', 'Grupo E'),
+
+    -- Grupo F
+    ('Japão', 'Holanda', '🇯🇵', '🇳🇱', '2026-06-14T17:00:00-03', 'Fase de Grupos', 'Grupo F'),
+    ('Suécia', 'Tunísia', '🇸🇪', '🇹🇳', '2026-06-14T23:00:00-03', 'Fase de Grupos', 'Grupo F'),
+    ('Japão', 'Suécia', '🇯🇵', '🇸🇪', '2026-06-25T20:00:00-03', 'Fase de Grupos', 'Grupo F'),
+    ('Holanda', 'Tunísia', '🇳🇱', '🇹🇳', '2026-06-25T20:00:00-03', 'Fase de Grupos', 'Grupo F'),
+    ('Japão', 'Tunísia', '🇯🇵', '🇹🇳', '2026-06-21T01:00:00-03', 'Fase de Grupos', 'Grupo F'),
+    ('Holanda', 'Suécia', '🇳🇱', '🇸🇪', '2026-06-20T14:00:00-03', 'Fase de Grupos', 'Grupo F'),
+
+    -- Grupo G
+    ('Bélgica', 'Egito', '🇧🇪', '🇪🇬', '2026-06-15T16:00:00-03', 'Fase de Grupos', 'Grupo G'),
+    ('Irã', 'Nova Zelândia', '🇮🇷', '🇳🇿', '2026-06-15T22:00:00-03', 'Fase de Grupos', 'Grupo G'),
+    ('Bélgica', 'Irã', '🇧🇪', '🇮🇷', '2026-06-21T16:00:00-03', 'Fase de Grupos', 'Grupo G'),
+    ('Egito', 'Nova Zelândia', '🇪🇬', '🇳🇿', '2026-06-21T22:00:00-03', 'Fase de Grupos', 'Grupo G'),
+    ('Bélgica', 'Nova Zelândia', '🇧🇪', '🇳🇿', '2026-06-27T00:00:00-03', 'Fase de Grupos', 'Grupo G'),
+    ('Egito', 'Irã', '🇪🇬', '🇮🇷', '2026-06-27T00:00:00-03', 'Fase de Grupos', 'Grupo G'),
+
+    -- Grupo H
+    ('Espanha', 'Cabo Verde', '🇪🇸', '🇨🇻', '2026-06-15T13:00:00-03', 'Fase de Grupos', 'Grupo H'),
+    ('Arábia Saudita', 'Uruguai', '🇸🇦', '🇺🇾', '2026-06-15T19:00:00-03', 'Fase de Grupos', 'Grupo H'),
+    ('Espanha', 'Arábia Saudita', '🇪🇸', '🇸🇦', '2026-06-21T13:00:00-03', 'Fase de Grupos', 'Grupo H'),
+    ('Cabo Verde', 'Uruguai', '🇨🇻', '🇺🇾', '2026-06-21T19:00:00-03', 'Fase de Grupos', 'Grupo H'),
+    ('Espanha', 'Uruguai', '🇪🇸', '🇺🇾', '2026-06-26T21:00:00-03', 'Fase de Grupos', 'Grupo H'),
+    ('Cabo Verde', 'Arábia Saudita', '🇨🇻', '🇸🇦', '2026-06-26T21:00:00-03', 'Fase de Grupos', 'Grupo H'),
+
+    -- Grupo I
+    ('França', 'Senegal', '🇫🇷', '🇸🇳', '2026-06-16T16:00:00-03', 'Fase de Grupos', 'Grupo I'),
+    ('Iraque', 'Noruega', '🇮🇶', '🇳🇴', '2026-06-16T19:00:00-03', 'Fase de Grupos', 'Grupo I'),
+    ('França', 'Iraque', '🇫🇷', '🇮🇶', '2026-06-22T18:00:00-03', 'Fase de Grupos', 'Grupo I'),
+    ('Senegal', 'Noruega', '🇸🇳', '🇳🇴', '2026-06-22T21:00:00-03', 'Fase de Grupos', 'Grupo I'),
+    ('França', 'Noruega', '🇫🇷', '🇳🇴', '2026-06-26T16:00:00-03', 'Fase de Grupos', 'Grupo I'),
+    ('Senegal', 'Iraque', '🇸🇳', '🇮🇶', '2026-06-26T16:00:00-03', 'Fase de Grupos', 'Grupo I'),
+
+    -- Grupo J
+    ('Argentina', 'Argélia', '🇦🇷', '🇩🇿', '2026-06-16T22:00:00-03', 'Fase de Grupos', 'Grupo J'),
+    ('Áustria', 'Jordânia', '🇦🇹', '🇯🇴', '2026-06-17T01:00:00-03', 'Fase de Grupos', 'Grupo J'),
+    ('Argentina', 'Áustria', '🇦🇷', '🇦🇹', '2026-06-22T14:00:00-03', 'Fase de Grupos', 'Grupo J'),
+    ('Argélia', 'Jordânia', '🇩🇿', '🇯🇴', '2026-06-23T00:00:00-03', 'Fase de Grupos', 'Grupo J'),
+    ('Argentina', 'Jordânia', '🇦🇷', '🇯🇴', '2026-06-27T23:00:00-03', 'Fase de Grupos', 'Grupo J'),
+    ('Argélia', 'Áustria', '🇩🇿', '🇦🇹', '2026-06-27T23:00:00-03', 'Fase de Grupos', 'Grupo J'),
+
+    -- Grupo K
+    ('Portugal', 'RD Congo', '🇵🇹', '🇨🇩', '2026-06-17T14:00:00-03', 'Fase de Grupos', 'Grupo K'),
+    ('Uzbequistão', 'Colômbia', '🇺🇿', '🇨🇴', '2026-06-17T23:00:00-03', 'Fase de Grupos', 'Grupo K'),
+    ('Portugal', 'Uzbequistão', '🇵🇹', '🇺🇿', '2026-06-23T14:00:00-03', 'Fase de Grupos', 'Grupo K'),
+    ('RD Congo', 'Colômbia', '🇨🇩', '🇨🇴', '2026-06-23T23:00:00-03', 'Fase de Grupos', 'Grupo K'),
+    ('Portugal', 'Colômbia', '🇵🇹', '🇨🇴', '2026-06-27T20:30:00-03', 'Fase de Grupos', 'Grupo K'),
+    ('RD Congo', 'Uzbequistão', '🇨🇩', '🇺🇿', '2026-06-27T20:30:00-03', 'Fase de Grupos', 'Grupo K'),
+
+    -- Grupo L
+    ('Inglaterra', 'Croácia', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🇭🇷', '2026-06-17T17:00:00-03', 'Fase de Grupos', 'Grupo L'),
+    ('Gana', 'Panamá', '🇬🇭', '🇵🇦', '2026-06-17T20:00:00-03', 'Fase de Grupos', 'Grupo L'),
+    ('Inglaterra', 'Gana', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🇬🇭', '2026-06-23T17:00:00-03', 'Fase de Grupos', 'Grupo L'),
+    ('Croácia', 'Panamá', '🇭🇷', '🇵🇦', '2026-06-23T20:00:00-03', 'Fase de Grupos', 'Grupo L'),
+    ('Inglaterra', 'Panamá', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🇵🇦', '2026-06-27T18:00:00-03', 'Fase de Grupos', 'Grupo L'),
+    ('Croácia', 'Gana', '🇭🇷', '🇬🇭', '2026-06-27T18:00:00-03', 'Fase de Grupos', 'Grupo L'),
+
+    -- Round of 32 (Trinta-e-dois-avos)
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-28T16:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-29T14:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-29T17:30:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-29T22:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-30T14:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-30T18:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-06-30T22:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-01T17:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-02T16:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-02T20:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-01T13:00:00-03', 'Fase de 32', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-01T21:00:00-03', 'Fase de 32', NULL),
+
+    -- Oitavas de Final
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-04T14:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-04T18:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-05T17:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-05T21:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-06T16:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-06T21:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-07T13:00:00-03', 'Oitavas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-07T17:00:00-03', 'Oitavas de Final', NULL),
+
+    -- Quartas de Final
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-09T17:00:00-03', 'Quartas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-10T16:00:00-03', 'Quartas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-11T18:00:00-03', 'Quartas de Final', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-11T22:00:00-03', 'Quartas de Final', NULL),
+
+    -- Semifinal
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-14T16:00:00-03', 'Semifinal', NULL),
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-15T16:00:00-03', 'Semifinal', NULL),
+
+    -- Disputa Terceiro Lugar
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-18T18:00:00-03', 'Decisão do 3º Lugar', NULL),
+
+    -- Final
+    ('A confirmar', 'A confirmar', '🏳️', '🏳️', '2026-07-19T16:00:00-03', 'Final', NULL)
 ON CONFLICT DO NOTHING;
+
+
+-- =========================================================================
+-- 6. FUNÇÃO: Obter Contagem de Palpites por Jogo (Ignorando RLS)
+-- Permite que o painel mostre a quantidade total de palpites mesmo antes do início.
+-- =========================================================================
+
+CREATE OR REPLACE FUNCTION public.get_predictions_count()
+RETURNS TABLE (match_id uuid, count bigint) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.match_id, COUNT(p.id) AS count
+    FROM public.predictions p
+    GROUP BY p.match_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Dar permissão de execução para usuários autenticados e anônimos
+GRANT EXECUTE ON FUNCTION public.get_predictions_count() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_predictions_count() TO anon;
+

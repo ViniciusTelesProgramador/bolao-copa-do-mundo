@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Trophy, Shield, User, SignOut, List, X, Calendar, SoccerBall } from '@phosphor-icons/react';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -72,140 +73,195 @@ export default function Navbar() {
   const navItems = [
     { name: 'Ranking', href: '/', icon: Trophy },
     ...(user ? [{ name: 'Palpitar', href: '/palpites', icon: Calendar }] : []),
+    ...(user ? [{ name: 'Todos', href: '/todos', icon: List }] : []),
     ...(user ? [{ name: 'Meu Perfil', href: '/perfil', icon: User }] : []),
     ...(isAdmin ? [{ name: 'Painel Admin', href: '/admin', icon: Shield }] : []),
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800 text-slate-100 transition-all duration-300">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <SoccerBall size={24} className="text-[#22c55e] transform group-hover:rotate-45 transition-transform duration-500" weight="fill" />
-              <span className="font-extrabold text-base sm:text-lg tracking-wider bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                BOLÃO COPA 2026
-              </span>
-            </Link>
-          </div>
-
-          {/* Desktop Nav Items */}
-          <div className="hidden md:flex items-center gap-5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-                    isActive
-                      ? 'bg-[#22c55e] text-slate-950 shadow-md shadow-green-500/10'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                  }`}
-                >
-                  <Icon size={16} weight={isActive ? 'bold' : 'regular'} />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </div>
-
-          {/* User Info & Actions */}
-          <div className="hidden md:flex items-center gap-4">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-350 font-bold">
-                  Olá, <span className="text-[#22c55e] font-extrabold">{profile?.name || user.email?.split('@')[0]}</span>
+    <>
+      <nav className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border-custom text-primary transition-all duration-300">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center gap-2.5 group min-h-[48px] min-w-[48px] focus:outline-none">
+                <SoccerBall size={24} className="text-accent-custom transform group-hover:rotate-45 transition-transform duration-500" weight="fill" />
+                <span className="font-extrabold text-base sm:text-lg tracking-wider bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent uppercase">
+                  BOLÃO COPA 2026
                 </span>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-rose-450 hover:text-rose-400 hover:bg-rose-950/20 border border-transparent hover:border-rose-900/40 transition-all duration-200"
-                >
-                  <SignOut size={15} />
-                  Sair
-                </button>
-              </div>
-            ) : (
-              <Link
-                href="/login"
-                className="px-4 py-2 bg-gradient-to-r from-[#22c55e] to-[#1ea34d] hover:from-[#1ea34d] hover:to-[#22c55e] text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-md transition-all duration-200"
-              >
-                Entrar
               </Link>
-            )}
-          </div>
+            </div>
 
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-xl text-slate-450 hover:text-white hover:bg-slate-800 focus:outline-none"
-            >
-              {isOpen ? <X size={22} /> : <List size={22} />}
-            </button>
+            {/* Desktop Nav Items */}
+            <div className="hidden md:flex items-center gap-5">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                      isActive
+                        ? 'bg-accent-custom text-slate-950 shadow-md shadow-green-500/10'
+                        : 'text-secondary hover:text-primary hover:bg-muted/80'
+                    }`}
+                  >
+                    <Icon size={16} weight={isActive ? 'bold' : 'regular'} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* User Info & Actions (Desktop) */}
+            <div className="hidden md:flex items-center gap-4">
+              <ThemeToggle />
+              
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-secondary font-bold">
+                    Olá, <span className="text-accent-custom font-extrabold">{profile?.name || user.email?.split('@')[0]}</span>
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-rose-500 hover:text-rose-400 hover:bg-rose-950/20 border border-transparent hover:border-rose-900/40 transition-all duration-200 cursor-pointer"
+                  >
+                    <SignOut size={15} />
+                    Sair
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="px-4 py-2 bg-gradient-to-r from-accent-custom to-accent-hover text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-md transition-all duration-200"
+                >
+                  Entrar
+                </Link>
+              )}
+            </div>
+
+            {/* Mobile Header Controls (ThemeToggle + Avatar/Burger) */}
+            <div className="flex md:hidden items-center gap-2">
+              <ThemeToggle />
+              
+              {user && (
+                <Link
+                  href="/perfil"
+                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-muted text-accent-custom border border-border-custom font-extrabold focus:outline-none"
+                  aria-label="Ir para Perfil"
+                >
+                  <User size={20} weight="bold" />
+                </Link>
+              )}
+
+              {/* Botão Hambúrguer */}
+              <button
+                onClick={() => setIsOpen(true)}
+                className="w-12 h-12 flex items-center justify-center rounded-xl text-secondary hover:text-primary hover:bg-muted border border-border-custom focus:outline-none cursor-pointer"
+                aria-label="Abrir menu"
+              >
+                <List size={22} />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Menu */}
+      {/* Drawer / Bottom Sheet Mobile */}
       {isOpen && (
-        <div className="md:hidden bg-slate-950 border-t border-slate-900 animate-fadeIn">
-          <div className="px-2 pt-2 pb-4 space-y-1 sm:px-3">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-bold uppercase tracking-wider ${
-                    isActive
-                      ? 'bg-[#22c55e] text-slate-950'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  <Icon size={18} />
-                  {item.name}
-                </Link>
-              );
-            })}
-            
-            {user ? (
-              <div className="pt-4 pb-2 border-t border-slate-900 px-3.5">
-                <div className="text-xs text-slate-400 mb-3 font-bold uppercase tracking-wider">
-                  Logado como:{' '}
-                  <span className="text-[#22c55e] font-extrabold block normal-case text-sm mt-0.5">
+        <div className="fixed inset-0 z-50 md:hidden animate-fadeIn">
+          {/* Overlay escuro de clique fora */}
+          <div
+            onClick={() => setIsOpen(false)}
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300"
+          />
+
+          {/* Container do Drawer deslizante */}
+          <div className="absolute bottom-0 left-0 right-0 bg-card border-t border-border-custom rounded-t-3xl p-6 shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto pb-safe">
+            {/* Drag Handle Indicator */}
+            <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-2 select-none" />
+
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-base font-black text-primary uppercase tracking-widest">
+                Menu de Navegação
+              </h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="w-10 h-10 flex items-center justify-center bg-muted rounded-full text-secondary hover:text-primary focus:outline-none cursor-pointer"
+                aria-label="Fechar menu"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+
+            {/* Informações do Usuário no Drawer */}
+            {user && (
+              <div className="bg-muted/50 border border-border-custom/50 rounded-2xl p-4 flex items-center gap-3">
+                <span className="w-10 h-10 flex items-center justify-center rounded-full bg-accent-custom/10 text-accent-custom border border-accent-custom/20 font-black text-sm uppercase">
+                  {(profile?.name || user.email || 'P').substring(0, 1)}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-sm font-extrabold text-primary truncate">
                     {profile?.name || user.email?.split('@')[0]}
-                  </span>
+                  </div>
+                  <div className="text-xs text-secondary truncate">
+                    {user.email}
+                  </div>
                 </div>
+              </div>
+            )}
+
+            {/* Links de Navegação */}
+            <div className="flex flex-col gap-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center gap-3 h-12 px-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-colors ${
+                      isActive
+                        ? 'bg-accent-custom text-slate-950'
+                        : 'text-secondary hover:text-primary hover:bg-muted'
+                    }`}
+                  >
+                    <Icon size={18} weight={isActive ? 'bold' : 'regular'} />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Ações Finais */}
+            <div className="border-t border-border-custom pt-4 mt-2">
+              {user ? (
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     handleLogout();
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-rose-450 border border-rose-950/60 hover:bg-rose-950/20 text-xs font-bold uppercase tracking-wider"
+                  className="w-full h-12 flex items-center justify-center gap-2 rounded-xl text-rose-500 hover:text-rose-400 hover:bg-rose-950/20 border border-border-custom text-xs font-bold uppercase tracking-wider cursor-pointer"
                 >
                   <SignOut size={16} />
                   Sair da Conta
                 </button>
-              </div>
-            ) : (
-              <div className="pt-4 pb-2 border-t border-slate-900 px-3.5">
+              ) : (
                 <Link
                   href="/login"
                   onClick={() => setIsOpen(false)}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-[#22c55e] hover:bg-[#1ea34d] text-slate-950 rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-md"
+                  className="w-full h-12 flex items-center justify-center bg-gradient-to-r from-accent-custom to-accent-hover text-slate-950 rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-md"
                 >
                   Entrar
                 </Link>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
-    </nav>
+    </>
   );
 }

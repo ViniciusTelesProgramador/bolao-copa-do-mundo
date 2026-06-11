@@ -30,12 +30,12 @@ export default async function AdminPage() {
   const matches: Match[] = matchesData || [];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-[#0f172a] text-slate-100 min-h-[calc(100vh-4rem)]">
-      <div className="mb-10 border-b border-slate-800 pb-6">
-        <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-wider">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
+      <div className="mb-10 border-b border-border-custom/60 pb-6">
+        <h1 className="text-2xl sm:text-4xl font-black text-primary uppercase tracking-wider">
           Painel do Administrador
         </h1>
-        <p className="text-sm text-slate-400 mt-2 font-medium">
+        <p className="text-sm text-secondary mt-2 font-medium">
           Cadastre novos confrontos da Copa do Mundo e lance os resultados oficiais das partidas para calcular os pontos de todos os palpites.
         </p>
       </div>

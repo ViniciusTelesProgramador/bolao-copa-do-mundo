@@ -1,10 +1,13 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getRanking } from '@/app/actions';
 import FlagTeam from '@/components/ui/FlagTeam';
 import PointsBadge from '@/components/ui/PointsBadge';
 import { Match, Prediction } from '@/types';
-import { Calendar, Hourglass } from '@phosphor-icons/react/dist/ssr';
+import { Calendar, Hourglass, CheckCircle, Shield } from '@phosphor-icons/react/dist/ssr';
+import Link from 'next/link';
+import { formatMatchDateTime } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +27,11 @@ export default async function PerfilPage() {
     .eq('id', user.id)
     .single();
 
-  // 3. Buscar palpites do usuário junto com os dados dos jogos (relacionamento/join no Supabase)
+  // 3. Buscar ranking para calcular a posição do usuário
+  const ranking = await getRanking();
+  const userRankPosition = ranking.findIndex((r) => r.user_id === user.id) + 1;
+
+  // 4. Buscar palpites do usuário junto com os dados dos jogos
   const { data: predictionsData } = await supabase
     .from('predictions')
     .select(`
@@ -59,120 +66,210 @@ export default async function PerfilPage() {
   const goalDiffHits = predictionsList.filter((p) => p.points === 2).length;
   const simpleOutcomeHits = predictionsList.filter((p) => p.points === 1).length;
 
+  // Dividir em palpites futuros (Aguardando) e passados (Finalizados/Pontuados)
+  const awaitingResults = predictionsList.filter(
+    (p) => p.match.home_score === null || p.match.away_score === null
+  );
+  
+  const scoredPredictions = predictionsList.filter(
+    (p) => p.match.home_score !== null && p.match.away_score !== null
+  );
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-[#0f172a] text-slate-100 min-h-[calc(100vh-4rem)]">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
       {/* Resumo do Usuário */}
-      <div className="bg-[#1e293b] border border-slate-700/60 rounded-2xl p-6 sm:p-8 shadow-xl mb-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#22c55e]/5 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-card border border-border-custom rounded-2xl p-6 sm:p-8 shadow-xl mb-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-accent-custom/5 rounded-full blur-2xl pointer-events-none" />
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-wider">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider">
               {profile?.name || user.email?.split('@')[0]}
             </h1>
-            <p className="text-xs text-slate-400 font-bold block">{user.email}</p>
+            <p className="text-xs text-secondary font-bold block">{user.email}</p>
+            {userRankPosition > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none mt-2">
+                🏆 {userRankPosition}º Lugar no Ranking
+              </span>
+            )}
           </div>
           
-          <div className="flex gap-4 sm:gap-6 border-t sm:border-t-0 sm:border-l border-slate-800 pt-4 sm:pt-0 sm:pl-6">
+          <div className="flex gap-4 sm:gap-6 border-t sm:border-t-0 sm:border-l border-border-custom pt-4 sm:pt-0 sm:pl-6">
             <div className="text-center">
-              <span className="text-slate-500 text-[10px] font-extrabold uppercase tracking-wider block">Pontos Totais</span>
-              <span className="text-3xl font-black text-[#22c55e] tracking-wider mt-1 block">{totalPoints}</span>
+              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Pontos Totais</span>
+              <span className="text-3xl font-black text-accent-custom tracking-wider mt-1 block">{totalPoints}</span>
             </div>
             <div className="text-center">
-              <span className="text-slate-500 text-[10px] font-extrabold uppercase tracking-wider block">Palpites Feitos</span>
-              <span className="text-3xl font-black text-white tracking-wider mt-1 block">{totalPredictions}</span>
+              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Palpites Feitos</span>
+              <span className="text-3xl font-black text-primary tracking-wider mt-1 block">{totalPredictions}</span>
             </div>
           </div>
         </div>
         
         {/* Sub-estatísticas */}
-        <div className="grid grid-cols-3 gap-2.5 mt-6 pt-5 border-t border-slate-800 text-center">
-          <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl py-2 px-1">
-            <span className="text-[10px] font-bold text-[#22c55e] block uppercase tracking-wider">Exato (3 pts)</span>
-            <span className="text-base sm:text-lg font-black text-white mt-0.5 block">{exactHits}</span>
+        <div className="grid grid-cols-3 gap-2.5 mt-6 pt-5 border-t border-border-custom text-center select-none">
+          <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
+            <span className="text-[10px] font-bold text-accent-custom block uppercase tracking-wider">Exato (3 pts)</span>
+            <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{exactHits}</span>
           </div>
-          <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl py-2 px-1">
-            <span className="text-[10px] font-bold text-amber-400 block uppercase tracking-wider">Saldo (2 pts)</span>
-            <span className="text-base sm:text-lg font-black text-white mt-0.5 block">{goalDiffHits}</span>
+          <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
+            <span className="text-[10px] font-bold text-amber-500 block uppercase tracking-wider">Saldo (2 pts)</span>
+            <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{goalDiffHits}</span>
           </div>
-          <div className="bg-slate-900/40 border border-slate-800/50 rounded-xl py-2 px-1">
-            <span className="text-[10px] font-bold text-sky-400 block uppercase tracking-wider">Vencedor (1 pt)</span>
-            <span className="text-base sm:text-lg font-black text-white mt-0.5 block">{simpleOutcomeHits}</span>
+          <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
+            <span className="text-[10px] font-bold text-sky-500 block uppercase tracking-wider">Vencedor (1 pt)</span>
+            <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{simpleOutcomeHits}</span>
           </div>
         </div>
       </div>
 
-      {/* Histórico de Palpites */}
-      <h2 className="text-lg font-extrabold text-white mb-5 flex items-center gap-2 uppercase tracking-wider pb-2 border-b border-slate-800">
-        <Hourglass size={18} className="text-[#22c55e]" />
-        Histórico de Palpites
-      </h2>
-
       {predictionsList.length === 0 ? (
-        <div className="bg-[#1e293b] border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
-          Você ainda não cadastrou nenhum palpite. Vá até a aba de palpites para começar!
+        /* Empty State Customizado */
+        <div className="text-center py-12 px-6 bg-card border border-border-custom rounded-2xl max-w-md mx-auto shadow-lg space-y-4 animate-fadeIn">
+          <div className="w-16 h-16 bg-accent-custom/10 text-accent-custom border border-accent-custom/20 rounded-full flex items-center justify-center text-2xl mx-auto">
+            ⚽
+          </div>
+          <h3 className="text-lg font-extrabold text-primary uppercase tracking-wider">
+            Você ainda não fez nenhum palpite.
+          </h3>
+          <p className="text-sm text-secondary">
+            Vai ficar de fora da disputa com seus amigos?
+          </p>
+          <div className="pt-2 flex justify-center">
+            <Link
+              href="/palpites"
+              className="inline-flex items-center justify-center min-h-[48px] px-6 bg-accent-custom hover:bg-accent-hover text-slate-950 font-bold rounded-xl shadow-md transition-all uppercase tracking-wider text-xs focus:outline-none"
+            >
+              Começar a Palpitar
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {predictionsList.map((pred) => {
-            const match: Match = pred.match;
-            const matchTime = new Date(match.match_time);
-            const hasRealResult = match.home_score !== null && match.away_score !== null;
+        <div className="space-y-10">
+          {/* Seção 1: Aguardando Resultado */}
+          {awaitingResults.length > 0 && (
+            <div>
+              <h2 className="text-base font-extrabold text-primary mb-5 flex items-center gap-2 uppercase tracking-wider pb-2 border-b border-border-custom">
+                <Hourglass size={18} className="text-amber-500" />
+                Aguardando Resultados ({awaitingResults.length})
+              </h2>
 
-            return (
-              <div
-                key={pred.id}
-                className="bg-[#1e293b] border border-slate-800 hover:border-slate-700 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-200"
-              >
-                {/* Metadados do Jogo */}
-                <div className="text-xs text-slate-400 font-semibold space-y-1 w-full sm:w-auto text-center sm:text-left">
-                  <div className="bg-slate-900 px-2 py-0.5 rounded-full text-[9px] text-slate-300 uppercase font-extrabold inline-block">
-                    {match.stage}
-                  </div>
-                  <div className="flex items-center justify-center sm:justify-start gap-1 text-slate-500 mt-1 font-bold">
-                    <Calendar size={12} />
-                    {matchTime.toLocaleDateString('pt-BR')} às {matchTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-
-                {/* Confronto Simétrico com Palpites */}
-                <div className="flex flex-1 items-center justify-center gap-3 w-full max-w-md my-1.5 sm:my-0">
-                  {/* Time Casa */}
-                  <div className="flex-1 flex justify-end">
-                    <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm justify-end w-full" />
-                  </div>
-                  
-                  {/* Palpite do Usuário */}
-                  <div className="flex flex-col items-center justify-center px-3 py-1 bg-slate-950 border border-slate-850 rounded-xl shrink-0">
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Palpite</span>
-                    <span className="text-sm font-black text-amber-400">{pred.home_score} x {pred.away_score}</span>
-                  </div>
-
-                  {/* Time Fora */}
-                  <div className="flex-1 flex justify-start">
-                    <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm justify-start w-full" />
-                  </div>
-                </div>
-
-                {/* Resultado Real e Pontos */}
-                <div className="flex items-center gap-3.5 w-full sm:w-auto justify-center sm:justify-end border-t sm:border-t-0 border-slate-800 pt-3.5 sm:pt-0">
-                  {hasRealResult ? (
-                    <>
-                      <div className="text-center sm:text-right">
-                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Resultado Real</span>
-                        <span className="text-sm font-black text-white">{match.home_score} x {match.away_score}</span>
+              <div className="space-y-4">
+                {awaitingResults.map((pred) => {
+                  const match: Match = pred.match;
+                  const matchTime = new Date(match.match_time);
+                  return (
+                    <div
+                      key={pred.id}
+                      className="bg-card border border-border-custom hover:border-secondary rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-200"
+                    >
+                      {/* Metadados do Jogo */}
+                      <div className="text-xs text-secondary font-semibold space-y-1 w-full sm:w-auto text-center sm:text-left">
+                        <div className="bg-muted px-2 py-0.5 rounded-full text-[9px] text-primary uppercase font-extrabold inline-block">
+                          {match.stage}
+                        </div>
+                        <div className="flex items-center justify-center sm:justify-start gap-1 text-secondary mt-1 font-bold">
+                          <Calendar size={12} />
+                          {formatMatchDateTime(match.match_time)}
+                        </div>
                       </div>
-                      <PointsBadge points={pred.points} />
-                    </>
-                  ) : (
-                    <span className="text-xs text-slate-500 font-bold uppercase italic select-none">
-                      Jogo não realizado
-                    </span>
-                  )}
-                </div>
+
+                      {/* Confronto Simétrico com Palpites */}
+                      <div className="flex flex-1 items-center justify-center gap-3 w-full max-w-md my-1.5 sm:my-0">
+                        <div className="flex-1 flex justify-end">
+                          <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm justify-end w-full" />
+                        </div>
+                        
+                        <div className="flex flex-col items-center justify-center px-3 py-1 bg-base border border-border-custom rounded-xl shrink-0">
+                          <span className="text-[9px] text-secondary font-bold uppercase tracking-wider mb-0.5">Seu Palpite</span>
+                          <span className="text-sm font-black text-amber-500">{pred.home_score} x {pred.away_score}</span>
+                        </div>
+
+                        <div className="flex-1 flex justify-start">
+                          <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm justify-start w-full" />
+                        </div>
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex items-center gap-3.5 w-full sm:w-auto justify-center sm:justify-end border-t sm:border-t-0 border-border-custom/40 pt-3.5 sm:pt-0 shrink-0">
+                        <Link
+                          href={`/palpites?match=${match.id}`}
+                          className="min-h-[48px] px-4 flex items-center justify-center bg-muted hover:bg-border-custom text-primary text-xs font-bold rounded-xl border border-border-custom transition-all"
+                        >
+                          Editar Palpite
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Seção 2: Finalizados & Pontuados */}
+          {scoredPredictions.length > 0 && (
+            <div>
+              <h2 className="text-base font-extrabold text-primary mb-5 flex items-center gap-2 uppercase tracking-wider pb-2 border-b border-border-custom">
+                <CheckCircle size={18} className="text-accent-custom" />
+                Pontuados e Finalizados ({scoredPredictions.length})
+              </h2>
+
+              <div className="space-y-4">
+                {scoredPredictions.map((pred) => {
+                  const match: Match = pred.match;
+                  const matchTime = new Date(match.match_time);
+                  
+                  // Fundo de destaque baseado na pontuação
+                  let pointsBg = 'bg-card';
+                  if (pred.points === 3) pointsBg = 'bg-green-500/5 dark:bg-green-500/5 border-green-500/20';
+                  else if (pred.points === 2 || pred.points === 1) pointsBg = 'bg-blue-500/5 dark:bg-blue-500/5 border-blue-500/20';
+
+                  return (
+                    <div
+                      key={pred.id}
+                      className={`border border-border-custom rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-200 ${pointsBg}`}
+                    >
+                      {/* Metadados do Jogo */}
+                      <div className="text-xs text-secondary font-semibold space-y-1 w-full sm:w-auto text-center sm:text-left">
+                        <div className="bg-muted px-2 py-0.5 rounded-full text-[9px] text-primary uppercase font-extrabold inline-block">
+                          {match.stage}
+                        </div>
+                        <div className="flex items-center justify-center sm:justify-start gap-1 text-secondary mt-1 font-bold">
+                          <Calendar size={12} />
+                          {formatMatchDateTime(match.match_time)}
+                        </div>
+                      </div>
+
+                      {/* Confronto Simétrico com Palpites */}
+                      <div className="flex flex-1 items-center justify-center gap-3 w-full max-w-md my-1.5 sm:my-0">
+                        <div className="flex-1 flex justify-end">
+                          <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm justify-end w-full" />
+                        </div>
+                        
+                        <div className="flex flex-col items-center justify-center px-3 py-1 bg-base border border-border-custom rounded-xl shrink-0">
+                          <span className="text-[9px] text-secondary font-bold uppercase tracking-wider mb-0.5">Seu Palpite</span>
+                          <span className="text-sm font-black text-amber-500">{pred.home_score} x {pred.away_score}</span>
+                        </div>
+
+                        <div className="flex-1 flex justify-start">
+                          <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm justify-start w-full" />
+                        </div>
+                      </div>
+
+                      {/* Resultado Real e Pontos */}
+                      <div className="flex items-center gap-3.5 w-full sm:w-auto justify-center sm:justify-end border-t sm:border-t-0 border-border-custom/40 pt-3.5 sm:pt-0">
+                        <div className="text-center sm:text-right">
+                          <span className="text-[9px] text-secondary font-bold uppercase tracking-wider block">Resultado Real</span>
+                          <span className="text-sm font-black text-primary">{match.home_score} x {match.away_score}</span>
+                        </div>
+                        <PointsBadge points={pred.points} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

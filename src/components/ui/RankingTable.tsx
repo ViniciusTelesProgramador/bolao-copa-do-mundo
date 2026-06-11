@@ -7,114 +7,160 @@ import { Medal, Trophy } from '@phosphor-icons/react';
 interface RankingTableProps {
   ranking: RankingEntry[];
   currentUserId?: string | null;
+  totalMatches?: number;
 }
 
-export default function RankingTable({ ranking, currentUserId }: RankingTableProps) {
+const colors = [
+  'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400',
+  'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400',
+  'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400',
+  'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400',
+  'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:text-purple-400',
+  'bg-pink-500/10 text-pink-600 border-pink-500/20 dark:text-pink-400',
+  'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400',
+  'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:text-cyan-400',
+];
+
+const getAvatarStyle = (name: string) => {
+  const code = name.charCodeAt(0) || 0;
+  return colors[code % colors.length];
+};
+
+export default function RankingTable({ ranking, currentUserId, totalMatches }: RankingTableProps) {
   if (ranking.length === 0) {
     return (
-      <div className="w-full bg-[#1e293b] border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
-        Nenhum participante pontuou ainda. Cadastre palpites e aguarde o início dos jogos!
+      <div className="w-full bg-card border border-border-custom rounded-2xl p-8 text-center text-secondary">
+        Ninguém palpitou ainda. Seja o primeiro!
       </div>
     );
   }
 
-  const getPositionStyle = (index: number) => {
-    switch (index) {
-      case 0: // Ouro
-        return {
-          icon: <Medal size={18} weight="fill" className="text-yellow-400" />,
-          bg: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-          text: 'font-extrabold text-yellow-400'
-        };
-      case 1: // Prata
-        return {
-          icon: <Medal size={18} weight="fill" className="text-slate-300" />,
-          bg: 'bg-slate-300/10 text-slate-300 border-slate-300/20',
-          text: 'font-extrabold text-slate-300'
-        };
-      case 2: // Bronze
-        return {
-          icon: <Medal size={18} weight="fill" className="text-amber-600" />,
-          bg: 'bg-amber-600/10 text-amber-500 border-amber-600/20',
-          text: 'font-extrabold text-amber-500'
-        };
-      default:
-        return {
-          icon: null,
-          bg: 'bg-slate-900 text-slate-400 border-slate-800',
-          text: 'font-bold text-slate-400'
-        };
-    }
-  };
-
   return (
-    <div className="w-full bg-[#1e293b] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-      <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/40">
-        <h3 className="text-sm font-extrabold text-white flex items-center gap-2 uppercase tracking-wider">
-          <Trophy size={18} className="text-[#22c55e]" />
+    <div className="w-full bg-card border border-border-custom rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
+      <div className="px-5 py-4 border-b border-border-custom/60 bg-muted/40 flex items-center justify-between">
+        <h3 className="text-xs sm:text-sm font-extrabold text-primary flex items-center gap-2 uppercase tracking-wider select-none">
+          <Trophy size={18} className="text-accent-custom shrink-0" />
           Classificação Geral
         </h3>
+        {totalMatches !== undefined && (
+          <span className="text-[9px] text-secondary font-black uppercase tracking-wider select-none shrink-0">
+            {totalMatches} Jogos
+          </span>
+        )}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      
+      <div className="overflow-x-hidden">
+        <table className="w-full text-left border-collapse table-fixed">
           <thead>
-            <tr className="border-b border-slate-800 text-xs font-bold text-slate-400 bg-slate-950/20">
-              <th className="py-4 px-6 text-center w-20">Pos</th>
-              <th className="py-4 px-4">Participante</th>
-              <th className="py-4 px-4 text-center">Palpites</th>
-              <th className="py-4 px-6 text-right w-24">Pontos</th>
+            <tr className="border-b border-border-custom/60 text-[9px] font-black text-secondary bg-muted/20 uppercase tracking-widest select-none">
+              <th className="py-3.5 px-3 text-center w-[48px] sm:w-[64px]">Pos</th>
+              <th className="py-3.5 px-2 text-left">Participante</th>
+              <th className="py-3.5 px-2 text-center w-[74px] hidden sm:table-cell">Palpites</th>
+              <th className="py-3.5 px-4 text-right w-[64px] sm:w-[94px]">
+                <span className="hidden sm:inline">Pontos</span>
+                <span className="sm:hidden">Pts</span>
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/40">
+          <tbody className="divide-y divide-border-custom/30">
             {ranking.map((entry, index) => {
               const pos = index + 1;
-              const posStyle = getPositionStyle(index);
               const isCurrentUser = currentUserId === entry.user_id;
+              const avatarStyle = getAvatarStyle(entry.name);
+
+              // Top 3 premium badges
+              let rankBadge = (
+                <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-muted text-secondary font-extrabold text-xs border border-border-custom/50">
+                  {pos}
+                </span>
+              );
+
+              if (pos === 1) {
+                rankBadge = (
+                  <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full shadow-md shadow-yellow-500/15 text-slate-950 font-black text-xs border border-yellow-400 select-none animate-pulse shrink-0">
+                    <Medal size={13} weight="fill" className="absolute -top-1 -right-1 text-yellow-100" />
+                    1
+                  </div>
+                );
+              } else if (pos === 2) {
+                rankBadge = (
+                  <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-400 rounded-full shadow-md shadow-slate-300/15 text-slate-950 font-black text-xs border border-slate-300 select-none shrink-0">
+                    <Medal size={13} weight="fill" className="absolute -top-1 -right-1 text-slate-100" />
+                    2
+                  </div>
+                );
+              } else if (pos === 3) {
+                rankBadge = (
+                  <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-amber-500 to-amber-700 rounded-full shadow-md shadow-amber-600/15 text-white font-black text-xs border border-amber-400 select-none shrink-0">
+                    <Medal size={13} weight="fill" className="absolute -top-1 -right-1 text-amber-100" />
+                    3
+                  </div>
+                );
+              }
 
               return (
                 <tr
                   key={entry.user_id}
-                  className={`transition-colors duration-200 ${
+                  className={`transition-all duration-200 ${
                     isCurrentUser
-                      ? 'bg-[#22c55e]/5 hover:bg-[#22c55e]/10'
-                      : 'hover:bg-slate-900/35'
+                      ? 'bg-accent-custom/5 dark:bg-accent-custom/5 border-l-4 border-l-accent-custom'
+                      : 'hover:bg-muted/30'
                   }`}
                 >
                   {/* Posição */}
-                  <td className="py-4 px-6 text-center">
+                  <td className="py-3 px-1 text-center">
                     <div className="flex justify-center">
+                      {rankBadge}
+                    </div>
+                  </td>
+
+                  {/* Participante (Avatar + Nome + Palpites no Mobile) */}
+                  <td className="py-3 px-2 font-bold text-sm min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span
-                        className={`w-7 h-7 flex items-center justify-center rounded-xl border text-xs ${posStyle.bg} ${posStyle.text}`}
+                        className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-black shrink-0 border select-none ${avatarStyle}`}
                       >
-                        {posStyle.icon ? posStyle.icon : pos}
+                        {entry.name.substring(0, 1).toUpperCase()}
                       </span>
-                    </div>
-                  </td>
-
-                  {/* Nome */}
-                  <td className="py-4 px-4 font-semibold text-slate-200">
-                    <div className="flex items-center gap-2">
-                      <span className={isCurrentUser ? 'text-[#22c55e] font-extrabold' : ''}>
-                        {entry.name}
-                      </span>
-                      {isCurrentUser && (
-                        <span className="text-[10px] bg-[#22c55e]/15 text-[#22c55e] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-[#22c55e]/20">
-                          Você
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}
+                            className={`truncate ${isCurrentUser ? 'text-accent-custom font-extrabold' : ''}`}
+                          >
+                            {entry.name}
+                          </span>
+                          {isCurrentUser && (
+                            <span className="text-[8px] bg-accent-custom/15 text-accent-custom px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider border border-accent-custom/20 select-none shrink-0">
+                              Você
+                            </span>
+                          )}
+                        </div>
+                        {/* Exibe palpites embaixo do nome apenas no mobile para liberar espaço horizontal */}
+                        <span className="text-[9px] text-secondary font-bold sm:hidden mt-0.5 select-none shrink-0">
+                          {totalMatches !== undefined ? `${entry.predictions_count}/${totalMatches} palpites` : `${entry.predictions_count} palpites`}
                         </span>
-                      )}
+                      </div>
                     </div>
                   </td>
 
-                  {/* Qtd Palpites */}
-                  <td className="py-4 px-4 text-center text-sm font-medium text-slate-400">
-                    {entry.predictions_count}
+                  {/* Qtd Palpites (Visível apenas em telas grandes) */}
+                  <td className="py-3 px-2 text-center text-xs font-semibold text-secondary select-none hidden sm:table-cell">
+                    {totalMatches !== undefined ? (
+                      <span>
+                        {entry.predictions_count}/{totalMatches}
+                      </span>
+                    ) : (
+                      <span>{entry.predictions_count}</span>
+                    )}
                   </td>
 
                   {/* Pontos */}
-                  <td className="py-4 px-6 text-right">
+                  <td className="py-3 px-4 text-right">
                     <span
-                      className={`text-base font-extrabold tracking-wider ${
-                        isCurrentUser ? 'text-[#22c55e]' : 'text-white'
+                      style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}
+                      className={`text-base font-black tracking-wider ${
+                        isCurrentUser ? 'text-accent-custom' : ''
                       }`}
                     >
                       {entry.total_points}
