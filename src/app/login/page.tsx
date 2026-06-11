@@ -2,21 +2,37 @@
 
 import React, { useState, useTransition, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { EnvelopeSimple, Lock, Spinner, CheckSquare } from '@phosphor-icons/react';
+import { registerUser } from '@/app/actions';
+import { User, Lock, Spinner, CheckSquare } from '@phosphor-icons/react';
 import { useSearchParams, useRouter } from 'next/navigation';
+
+function nicknameToEmail(nickname: string): string {
+  const sanitized = nickname
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9.]/g, '');
+  return `${sanitized}@bolao.interno`;
+}
+
+function toEmail(input: string): string {
+  // Admin entra com e-mail real; demais usuários usam apelido
+  if (input.includes('@')) return input.trim();
+  return nicknameToEmail(input);
+}
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
 
-  const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [isTransitionPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     errorParam === 'invalid_token'
-      ? { type: 'error', text: 'O link de acesso expirou ou é inválido. Solicite um novo link.' }
+      ? { type: 'error', text: 'Sessão inválida. Faça login novamente.' }
       : null
   );
 
@@ -24,45 +40,42 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
-
+    if (!nickname || !password) return;
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
         if (mode === 'login') {
           const { error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
+            email: toEmail(nickname),
             password,
           });
 
           if (error) {
-            setStatusMessage({ type: 'error', text: 'E-mail ou senha incorretos.' });
+            setStatusMessage({ type: 'error', text: 'Apelido ou senha incorretos.' });
           } else {
             router.push('/palpites');
             router.refresh();
           }
         } else {
-          const { data: signUpData, error } = await supabase.auth.signUp({
-            email: email.trim(),
+          const result = await registerUser(nickname, password);
+
+          if (!result.success) {
+            setStatusMessage({ type: 'error', text: result.error || 'Erro ao criar conta.' });
+            return;
+          }
+
+          // Loga direto após criar conta
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: nicknameToEmail(nickname),
             password,
-            options: {
-              data: { name: email.split('@')[0] },
-            },
           });
 
-          if (error) {
-            setStatusMessage({ type: 'error', text: error.message || 'Erro ao criar conta.' });
-          } else if (signUpData.session) {
-            // Confirmação desligada no Supabase → já entra direto
+          if (!signInError) {
             router.push('/palpites');
             router.refresh();
           } else {
-            // Confirmação ainda ativa → avisa o usuário
-            setStatusMessage({
-              type: 'success',
-              text: 'Verifique seu e-mail e clique no link de confirmação antes de entrar.',
-            });
+            setStatusMessage({ type: 'success', text: 'Conta criada! Agora entre com seu apelido e senha.' });
             setMode('login');
             setPassword('');
           }
@@ -82,7 +95,7 @@ function LoginForm() {
           Acessar Bolão
         </h1>
         <p className="text-xs text-secondary mt-2 font-bold uppercase tracking-wider">
-          {mode === 'login' ? 'Entre com sua conta' : 'Crie sua conta'}
+          {mode === 'login' ? 'Entre com seu apelido' : 'Crie seu apelido'}
         </p>
       </div>
 
@@ -118,9 +131,7 @@ function LoginForm() {
             <CheckSquare size={52} weight="fill" />
           </div>
           <h3 className="text-lg font-bold text-primary uppercase tracking-wider">Conta criada!</h3>
-          <p className="text-sm text-secondary leading-relaxed font-semibold">
-            {statusMessage.text}
-          </p>
+          <p className="text-sm text-secondary leading-relaxed font-semibold">{statusMessage.text}</p>
           <button
             onClick={() => setStatusMessage(null)}
             className="min-h-[48px] px-6 text-xs font-bold text-accent-custom hover:underline transition-all uppercase tracking-wider cursor-pointer"
@@ -131,21 +142,21 @@ function LoginForm() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label htmlFor="email" className="text-xs font-bold text-secondary uppercase tracking-wider block">
-              Endereço de E-mail
+            <label htmlFor="nickname" className="text-xs font-bold text-secondary uppercase tracking-wider block">
+              {mode === 'login' ? 'Seu Apelido' : 'Escolha um Apelido'}
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-secondary">
-                <EnvelopeSimple size={18} />
+                <User size={18} />
               </span>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="nickname"
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
                 disabled={isTransitionPending}
                 className="w-full h-12 pl-10 pr-4 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none transition-colors disabled:opacity-50 font-medium"
-                placeholder="nome@exemplo.com"
+                placeholder={mode === 'login' ? 'Ex: Marcos' : 'Ex: Marcos, João...'}
                 required
               />
             </div>
@@ -166,7 +177,7 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isTransitionPending}
                 className="w-full h-12 pl-10 pr-4 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none transition-colors disabled:opacity-50 font-medium"
-                placeholder={mode === 'login' ? 'Sua senha de acesso' : 'Mínimo 6 caracteres'}
+                placeholder={mode === 'login' ? 'Sua senha' : 'Mínimo 6 caracteres'}
                 minLength={mode === 'register' ? 6 : undefined}
                 required
               />
@@ -181,7 +192,7 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={isTransitionPending || !email || !password}
+            disabled={isTransitionPending || !nickname || !password}
             className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-accent-custom to-accent-hover text-slate-950 text-sm font-extrabold uppercase tracking-wider rounded-xl shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isTransitionPending ? (
@@ -190,7 +201,7 @@ function LoginForm() {
                 Carregando...
               </>
             ) : mode === 'login' ? (
-              'Entrar com Senha'
+              'Entrar'
             ) : (
               'Criar Conta'
             )}
@@ -206,7 +217,7 @@ export default function LoginPage() {
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 bg-base text-primary transition-colors duration-300">
       <Suspense fallback={
         <div className="w-full max-w-md bg-card border border-border-custom rounded-2xl p-8 text-center text-secondary font-bold shadow-md">
-          Carregando formulário...
+          Carregando...
         </div>
       }>
         <LoginForm />

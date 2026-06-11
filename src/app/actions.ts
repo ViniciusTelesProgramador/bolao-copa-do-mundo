@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { RankingEntry } from '@/types';
 import { revalidatePath } from 'next/cache';
 import timeMapping from '@/lib/match_times_mapping.json';
@@ -344,6 +345,46 @@ export async function shiftAllMatchTimes() {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
+ * Cria um novo usuário com apelido + senha, sem confirmação de e-mail.
+ * Usa o Admin API (service role) para marcar o e-mail como já confirmado.
+ */
+export async function registerUser(nickname: string, password: string) {
+  try {
+    const supabase = createAdminClient();
+
+    const sanitized = nickname
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '.')
+      .replace(/[^a-z0-9.]/g, '');
+
+    if (!sanitized) {
+      return { success: false, error: 'Apelido inválido. Use letras e números.' };
+    }
+
+    const email = `${sanitized}@bolao.interno`;
+
+    const { error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name: nickname.trim() },
+    });
+
+    if (error) {
+      if (error.message.includes('already been registered') || error.message.includes('already exists')) {
+        return { success: false, error: 'Esse apelido já está em uso. Escolha outro.' };
+      }
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro ao criar conta.' };
   }
 }
 
