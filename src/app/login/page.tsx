@@ -9,10 +9,10 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loginMode, setLoginMode] = useState<'magic-link' | 'password'>('magic-link');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [isTransitionPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     errorParam === 'invalid_token'
@@ -22,46 +22,44 @@ function LoginForm() {
 
   const supabase = createClient();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) return;
 
     setStatusMessage(null);
 
     startTransition(async () => {
       try {
-        if (loginMode === 'magic-link') {
-          // Envia o Magic Link (OTP por E-mail)
-          const { error } = await supabase.auth.signInWithOtp({
+        if (mode === 'login') {
+          const { error } = await supabase.auth.signInWithPassword({
             email: email.trim(),
+            password,
+          });
+
+          if (error) {
+            setStatusMessage({ type: 'error', text: 'E-mail ou senha incorretos.' });
+          } else {
+            router.push('/palpites');
+            router.refresh();
+          }
+        } else {
+          const { error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password,
             options: {
-              emailRedirectTo: `${window.location.origin}/auth/confirm?next=/palpites`,
-              data: {
-                name: email.split('@')[0],
-              },
+              data: { name: email.split('@')[0] },
             },
           });
 
           if (error) {
-            setStatusMessage({ type: 'error', text: error.message || 'Erro ao enviar link mágico.' });
+            setStatusMessage({ type: 'error', text: error.message || 'Erro ao criar conta.' });
           } else {
             setStatusMessage({
               type: 'success',
-              text: 'Verifique seu email — enviamos um link de acesso',
+              text: 'Conta criada! Agora entre com seu e-mail e senha.',
             });
-          }
-        } else {
-          // Login direto com e-mail e senha (ignora SMTP e rate limit de e-mails!)
-          const { error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password: password,
-          });
-
-          if (error) {
-            setStatusMessage({ type: 'error', text: error.message || 'E-mail ou senha incorretos.' });
-          } else {
-            router.push('/palpites');
-            router.refresh();
+            setMode('login');
+            setPassword('');
           }
         }
       } catch (err: any) {
@@ -72,7 +70,6 @@ function LoginForm() {
 
   return (
     <div className="w-full max-w-md bg-card border border-border-custom rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden transition-all duration-300">
-      {/* Efeito visual decorativo de gradiente */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-accent-custom/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="text-center mb-6">
@@ -80,48 +77,42 @@ function LoginForm() {
           Acessar Bolão
         </h1>
         <p className="text-xs text-secondary mt-2 font-bold uppercase tracking-wider">
-          Escolha como prefere se conectar
+          {mode === 'login' ? 'Entre com sua conta' : 'Crie sua conta'}
         </p>
       </div>
 
-      {/* Tabs Seletoras de Modo de Login (Min 48px de toque) */}
+      {/* Tabs: Entrar / Criar Conta */}
       <div className="flex border border-border-custom/50 mb-6 bg-muted/40 p-1 rounded-xl">
         <button
           type="button"
-          onClick={() => {
-            setLoginMode('magic-link');
-            setStatusMessage(null);
-          }}
+          onClick={() => { setMode('login'); setStatusMessage(null); }}
           className={`flex-1 min-h-[48px] rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-            loginMode === 'magic-link'
+            mode === 'login'
               ? 'bg-accent-custom text-slate-950 shadow'
               : 'text-secondary hover:text-primary'
           }`}
         >
-          Link Mágico
+          Entrar
         </button>
         <button
           type="button"
-          onClick={() => {
-            setLoginMode('password');
-            setStatusMessage(null);
-          }}
+          onClick={() => { setMode('register'); setStatusMessage(null); }}
           className={`flex-1 min-h-[48px] rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-            loginMode === 'password'
+            mode === 'register'
               ? 'bg-accent-custom text-slate-950 shadow'
               : 'text-secondary hover:text-primary'
           }`}
         >
-          E-mail e Senha
+          Criar Conta
         </button>
       </div>
 
       {statusMessage?.type === 'success' ? (
         <div className="text-center py-6 space-y-4 animate-fadeIn">
           <div className="flex justify-center text-accent-custom">
-            <CheckSquare size={52} weight="fill" className="animate-pulse" />
+            <CheckSquare size={52} weight="fill" />
           </div>
-          <h3 className="text-lg font-bold text-primary uppercase tracking-wider">Verifique seu e-mail</h3>
+          <h3 className="text-lg font-bold text-primary uppercase tracking-wider">Conta criada!</h3>
           <p className="text-sm text-secondary leading-relaxed font-semibold">
             {statusMessage.text}
           </p>
@@ -129,12 +120,11 @@ function LoginForm() {
             onClick={() => setStatusMessage(null)}
             className="min-h-[48px] px-6 text-xs font-bold text-accent-custom hover:underline transition-all uppercase tracking-wider cursor-pointer"
           >
-            Voltar
+            Ir para o Login
           </button>
         </div>
       ) : (
-        <form onSubmit={handleLogin} className="space-y-5">
-          {/* Input E-mail */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-xs font-bold text-secondary uppercase tracking-wider block">
               Endereço de E-mail
@@ -156,29 +146,27 @@ function LoginForm() {
             </div>
           </div>
 
-          {/* Input Senha (apenas no modo senha) */}
-          {loginMode === 'password' && (
-            <div className="space-y-1.5 animate-fadeIn">
-              <label htmlFor="password" className="text-xs font-bold text-secondary uppercase tracking-wider block">
-                Sua Senha
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-secondary">
-                  <Lock size={18} />
-                </span>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isTransitionPending}
-                  className="w-full h-12 pl-10 pr-4 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none transition-colors disabled:opacity-50 font-medium"
-                  placeholder="Sua senha de acesso"
-                  required
-                />
-              </div>
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="text-xs font-bold text-secondary uppercase tracking-wider block">
+              {mode === 'login' ? 'Sua Senha' : 'Crie uma Senha'}
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-secondary">
+                <Lock size={18} />
+              </span>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isTransitionPending}
+                className="w-full h-12 pl-10 pr-4 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none transition-colors disabled:opacity-50 font-medium"
+                placeholder={mode === 'login' ? 'Sua senha de acesso' : 'Mínimo 6 caracteres'}
+                minLength={mode === 'register' ? 6 : undefined}
+                required
+              />
             </div>
-          )}
+          </div>
 
           {statusMessage?.type === 'error' && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold rounded-xl p-3.5 text-center">
@@ -188,7 +176,7 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={isTransitionPending || !email || (loginMode === 'password' && !password)}
+            disabled={isTransitionPending || !email || !password}
             className="w-full h-12 flex items-center justify-center gap-2 bg-gradient-to-r from-accent-custom to-accent-hover text-slate-950 text-sm font-extrabold uppercase tracking-wider rounded-xl shadow-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isTransitionPending ? (
@@ -196,10 +184,10 @@ function LoginForm() {
                 <Spinner className="animate-spin" size={18} weight="bold" />
                 Carregando...
               </>
-            ) : loginMode === 'magic-link' ? (
-              'Entrar com Magic Link'
-            ) : (
+            ) : mode === 'login' ? (
               'Entrar com Senha'
+            ) : (
+              'Criar Conta'
             )}
           </button>
         </form>
