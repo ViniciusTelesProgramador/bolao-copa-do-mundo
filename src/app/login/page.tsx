@@ -43,7 +43,7 @@ function LoginForm() {
             router.refresh();
           }
         } else {
-          const { error } = await supabase.auth.signUp({
+          const { data: signUpData, error } = await supabase.auth.signUp({
             email: email.trim(),
             password,
             options: {
@@ -53,10 +53,15 @@ function LoginForm() {
 
           if (error) {
             setStatusMessage({ type: 'error', text: error.message || 'Erro ao criar conta.' });
+          } else if (signUpData.session) {
+            // Confirmação desligada no Supabase → já entra direto
+            router.push('/palpites');
+            router.refresh();
           } else {
+            // Confirmação ainda ativa → avisa o usuário
             setStatusMessage({
               type: 'success',
-              text: 'Conta criada! Agora entre com seu e-mail e senha.',
+              text: 'Verifique seu e-mail e clique no link de confirmação antes de entrar.',
             });
             setMode('login');
             setPassword('');
