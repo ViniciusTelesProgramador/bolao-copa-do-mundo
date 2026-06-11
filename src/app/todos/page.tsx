@@ -47,19 +47,8 @@ export default async function TodosPalpitesPage() {
 
   const rawPredictions = (predictionsData || []) as unknown as RawPrediction[];
 
-  // 4. Filtrar palpites no servidor de acordo com a invariante de privacidade:
-  // "Nunca mostrar palpites de outros usuários antes do jogo começar"
+  // 4. Mapear palpites — todos visíveis para todos
   const predictions = rawPredictions
-    .filter((p) => {
-      const match = matches.find((m) => m.id === p.match_id);
-      if (!match) return false;
-      
-      const isStarted = new Date(match.match_time) <= new Date();
-      const isSelf = user && p.user_id === user.id;
-      
-      // Retorna apenas se o jogo já começou OU se o palpite for do próprio usuário logado
-      return isStarted || isSelf;
-    })
     .map((p) => ({
       id: p.id,
       match_id: p.match_id,
@@ -99,7 +88,7 @@ export default async function TodosPalpitesPage() {
           Palpites de Todos
         </h1>
         <p className="text-xs sm:text-sm text-secondary mt-2 font-medium">
-          Acompanhe todos os palpites enviados pelos participantes da Copa. Os palpites de outras pessoas para jogos futuros permanecem ocultos até o início de cada jogo.
+          Acompanhe todos os palpites enviados pelos participantes da Copa.
         </p>
       </div>
 
