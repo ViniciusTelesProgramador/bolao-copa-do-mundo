@@ -5,9 +5,11 @@ import { getRanking } from '@/app/actions';
 import FlagTeam from '@/components/ui/FlagTeam';
 import PointsBadge from '@/components/ui/PointsBadge';
 import { Match, Prediction } from '@/types';
-import { Calendar, Hourglass, CheckCircle, Shield } from '@phosphor-icons/react/dist/ssr';
+import { Calendar, Hourglass, CheckCircle, Flame } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/date';
+import EditNicknameForm from '@/components/ui/EditNicknameForm';
+import ShareButton from '@/components/ui/ShareButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +69,24 @@ export default async function PerfilPage() {
   const simpleOutcomeHits = predictionsList.filter((p) => p.points === 1).length;
   const totalAcertos = exactHits + goalDiffHits + simpleOutcomeHits;
 
+  // Calcular streak: sequência consecutiva de acertos (ordenada por match_time)
+  const scoredByTime = [...predictionsList]
+    .filter((p) => p.match.home_score !== null)
+    .sort((a, b) => new Date(a.match.match_time).getTime() - new Date(b.match.match_time).getTime());
+
+  let maxStreak = 0;
+  let currentStreak = 0;
+  let tempStreak = 0;
+
+  for (const p of scoredByTime) {
+    if ((p.points ?? 0) > 0) { tempStreak++; maxStreak = Math.max(maxStreak, tempStreak); }
+    else tempStreak = 0;
+  }
+  for (let i = scoredByTime.length - 1; i >= 0; i--) {
+    if ((scoredByTime[i].points ?? 0) > 0) currentStreak++;
+    else break;
+  }
+
   // Dividir em palpites futuros (Aguardando) e passados (Finalizados/Pontuados)
   const awaitingResults = predictionsList.filter(
     (p) => p.match.home_score === null || p.match.away_score === null
@@ -88,13 +108,22 @@ export default async function PerfilPage() {
               {profile?.name || user.email?.split('@')[0]}
             </h1>
             {user.email && !user.email.endsWith('@bolao.interno') && (
-              <p className="text-xs text-secondary font-bold block">{user.email}</p>
+              <p className="text-xs text-secondary font-bold">{user.email}</p>
             )}
-            {userRankPosition > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none mt-2">
-                🏆 {userRankPosition}º Lugar no Ranking
-              </span>
-            )}
+            <EditNicknameForm currentName={profile?.name || user.email?.split('@')[0] || ''} />
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              {userRankPosition > 0 && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">
+                  🏆 {userRankPosition}º Lugar
+                </span>
+              )}
+              {currentStreak >= 2 && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">
+                  🔥 {currentStreak} em sequência
+                </span>
+              )}
+              <ShareButton position={userRankPosition || 99} totalPoints={totalPoints} acertos={totalAcertos} />
+            </div>
           </div>
           
           <div className="flex gap-4 sm:gap-6 border-t sm:border-t-0 sm:border-l border-border-custom pt-4 sm:pt-0 sm:pl-6">
@@ -114,18 +143,26 @@ export default async function PerfilPage() {
         </div>
         
         {/* Sub-estatísticas */}
-        <div className="grid grid-cols-3 gap-2.5 mt-6 pt-5 border-t border-border-custom text-center select-none">
+        <div className="grid grid-cols-4 gap-2 mt-6 pt-5 border-t border-border-custom text-center select-none">
           <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
-            <span className="text-[10px] font-bold text-accent-custom block uppercase tracking-wider">Exato (3 pts)</span>
+            <span className="text-[9px] font-bold text-accent-custom block uppercase tracking-wider">Exato</span>
             <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{exactHits}</span>
+            <span className="text-[9px] text-secondary font-bold">3 pts</span>
           </div>
           <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
-            <span className="text-[10px] font-bold text-amber-500 block uppercase tracking-wider">Saldo (2 pts)</span>
+            <span className="text-[9px] font-bold text-amber-500 block uppercase tracking-wider">Saldo</span>
             <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{goalDiffHits}</span>
+            <span className="text-[9px] text-secondary font-bold">2 pts</span>
           </div>
           <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
-            <span className="text-[10px] font-bold text-sky-500 block uppercase tracking-wider">Vencedor (1 pt)</span>
+            <span className="text-[9px] font-bold text-sky-500 block uppercase tracking-wider">Vencedor</span>
             <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{simpleOutcomeHits}</span>
+            <span className="text-[9px] text-secondary font-bold">1 pt</span>
+          </div>
+          <div className="bg-muted/40 border border-orange-500/20 rounded-xl py-2 px-1">
+            <span className="text-[9px] font-bold text-orange-500 block uppercase tracking-wider">Sequência</span>
+            <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{maxStreak}</span>
+            <span className="text-[9px] text-secondary font-bold">máx</span>
           </div>
         </div>
       </div>

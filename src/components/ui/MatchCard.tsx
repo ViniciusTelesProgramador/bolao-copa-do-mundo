@@ -9,6 +9,7 @@ import PointsBadge from './PointsBadge';
 import { Match, Prediction } from '@/types';
 import { savePrediction } from '@/app/actions';
 import { Calendar, NotePencil, Lock, X, Spinner, Check } from '@phosphor-icons/react';
+import CountdownTimer from './CountdownTimer';
 import { showToast } from './Toast';
 import { formatMatchDate, formatMatchTime } from '@/lib/date';
 
@@ -148,10 +149,13 @@ export default function MatchCard({ match, prediction, isAuthenticated, matchNum
         <span className="bg-muted px-2.5 py-1 rounded-full text-[10px] text-slate-900 dark:text-slate-50 uppercase tracking-wider truncate max-w-[170px] sm:max-w-[200px]">
           {match.stage} {match.group_name ? `• ${match.group_name}` : ''} {matchNumber ? `• Jogo ${matchNumber}` : ''}
         </span>
-        <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 shrink-0 select-none">
-          <Calendar size={14} />
-          {dateFormatted} às {timeFormatted}
-        </span>
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 select-none">
+            <Calendar size={14} />
+            {dateFormatted} às {timeFormatted}
+          </span>
+          {!isStarted && !hasRealResult && <CountdownTimer matchTime={match.match_time} />}
+        </div>
       </div>
 
       {/* Grid Principal (Layout Confronto Simétrico) */}

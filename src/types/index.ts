@@ -34,4 +34,6 @@ export interface RankingEntry {
   name: string;
   total_points: number;
   predictions_count: number;
+  acertos_count: number;
+  aproveitamento: number;
 }

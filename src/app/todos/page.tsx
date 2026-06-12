@@ -30,7 +30,14 @@ export default async function TodosPalpitesPage() {
     .order('match_time', { ascending: true });
   const matches: Match[] = matchesData || [];
 
-  // 3. Buscar todos os palpites
+  // 3. Buscar todos os perfis (para mostrar quem não palpitou)
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .order('name', { ascending: true });
+  const allProfiles = (profilesData || []) as { id: string; name: string }[];
+
+  // 4. Buscar todos os palpites
   const { data: predictionsData } = await supabase
     .from('predictions')
     .select(`
@@ -102,6 +109,7 @@ export default async function TodosPalpitesPage() {
           predictions={predictions}
           predictionsCount={predictionsCount}
           currentUserId={user?.id || null}
+          allProfiles={allProfiles}
         />
       )}
     </div>

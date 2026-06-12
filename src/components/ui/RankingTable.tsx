@@ -55,7 +55,7 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
             <tr className="border-b border-border-custom/60 text-[9px] font-black text-secondary bg-muted/20 uppercase tracking-widest select-none">
               <th className="py-3.5 px-3 text-center w-[48px] sm:w-[64px]">Pos</th>
               <th className="py-3.5 px-2 text-left">Participante</th>
-              <th className="py-3.5 px-2 text-center w-[74px] hidden sm:table-cell">Palpites</th>
+              <th className="py-3.5 px-2 text-center w-[64px] hidden sm:table-cell">Aprv.</th>
               <th className="py-3.5 px-4 text-right w-[64px] sm:w-[94px]">
                 <span className="hidden sm:inline">Pontos</span>
                 <span className="sm:hidden">Pts</span>
@@ -136,23 +136,26 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
                             </span>
                           )}
                         </div>
-                        {/* Exibe palpites embaixo do nome apenas no mobile para liberar espaço horizontal */}
-                        <span className="text-[9px] text-secondary font-bold sm:hidden mt-0.5 select-none shrink-0">
-                          {totalMatches !== undefined ? `${entry.predictions_count}/${totalMatches} palpites` : `${entry.predictions_count} palpites`}
+                        <span className={`text-[9px] font-bold sm:hidden mt-0.5 select-none shrink-0 ${
+                          entry.aproveitamento >= 70 ? 'text-green-500' :
+                          entry.aproveitamento >= 40 ? 'text-amber-500' :
+                          entry.predictions_count === 0 ? 'text-secondary' : 'text-red-400'
+                        }`}>
+                          {entry.predictions_count === 0 ? 'sem palpites' : `${entry.aproveitamento}% de aproveitamento`}
                         </span>
                       </div>
                     </div>
                   </td>
 
-                  {/* Qtd Palpites (Visível apenas em telas grandes) */}
-                  <td className="py-3 px-2 text-center text-xs font-semibold text-secondary select-none hidden sm:table-cell">
-                    {totalMatches !== undefined ? (
-                      <span>
-                        {entry.predictions_count}/{totalMatches}
-                      </span>
-                    ) : (
-                      <span>{entry.predictions_count}</span>
-                    )}
+                  {/* Aproveitamento (desktop only) */}
+                  <td className="py-3 px-2 text-center select-none hidden sm:table-cell">
+                    <span className={`text-xs font-black ${
+                      entry.aproveitamento >= 70 ? 'text-green-500' :
+                      entry.aproveitamento >= 40 ? 'text-amber-500' :
+                      entry.predictions_count === 0 ? 'text-secondary' : 'text-red-400'
+                    }`}>
+                      {entry.predictions_count === 0 ? '—' : `${entry.aproveitamento}%`}
+                    </span>
                   </td>
 
                   {/* Pontos */}

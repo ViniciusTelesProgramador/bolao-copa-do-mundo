@@ -161,30 +161,36 @@ export async function getRanking(): Promise<RankingEntry[]> {
     }
 
     // 3. Agregar pontos e contagem em memória de forma limpa e performática
-    const rankingMap = new Map<string, { total_points: number; predictions_count: number }>();
-    
+    const rankingMap = new Map<string, { total_points: number; predictions_count: number; acertos_count: number }>();
+
     // Inicializar mapa com todos os usuários
     profiles.forEach((p) => {
-      rankingMap.set(p.id, { total_points: 0, predictions_count: 0 });
+      rankingMap.set(p.id, { total_points: 0, predictions_count: 0, acertos_count: 0 });
     });
 
     // Somar pontos das predictions pontuadas
     predictions.forEach((pred) => {
-      const current = rankingMap.get(pred.user_id) || { total_points: 0, predictions_count: 0 };
+      const current = rankingMap.get(pred.user_id) || { total_points: 0, predictions_count: 0, acertos_count: 0 };
       rankingMap.set(pred.user_id, {
         total_points: current.total_points + (pred.points || 0),
-        predictions_count: current.predictions_count + 1
+        predictions_count: current.predictions_count + 1,
+        acertos_count: current.acertos_count + ((pred.points ?? 0) > 0 ? 1 : 0),
       });
     });
 
     // 4. Montar a lista final com os nomes dos perfis
     const rankingList: RankingEntry[] = profiles.map((p) => {
-      const stats = rankingMap.get(p.id) || { total_points: 0, predictions_count: 0 };
+      const stats = rankingMap.get(p.id) || { total_points: 0, predictions_count: 0, acertos_count: 0 };
+      const aproveitamento = stats.predictions_count > 0
+        ? Math.round((stats.acertos_count / stats.predictions_count) * 100)
+        : 0;
       return {
         user_id: p.id,
         name: p.name,
         total_points: stats.total_points,
-        predictions_count: stats.predictions_count
+        predictions_count: stats.predictions_count,
+        acertos_count: stats.acertos_count,
+        aproveitamento,
       };
     });
 
@@ -342,6 +348,44 @@ export async function shiftAllMatchTimes() {
     revalidatePath('/todos');
     revalidatePath('/');
 
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
+ * Atualiza o apelido (nome público) do usuário logado na tabela profiles.
+ */
+export async function updateNickname(newName: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const trimmed = newName.trim();
+    if (trimmed.length < 2) return { success: false, error: 'Apelido deve ter pelo menos 2 caracteres.' };
+    if (trimmed.length > 30) return { success: false, error: 'Apelido deve ter no máximo 30 caracteres.' };
+
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('name', trimmed)
+      .neq('id', user.id)
+      .maybeSingle();
+
+    if (existing) return { success: false, error: 'Esse apelido já está em uso.' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ name: trimmed })
+      .eq('id', user.id);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/perfil');
+    revalidatePath('/');
+    revalidatePath('/todos');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Erro inesperado.' };

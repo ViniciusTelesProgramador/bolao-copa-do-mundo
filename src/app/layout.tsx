@@ -10,10 +10,28 @@ const outfit = Outfit({
   variable: '--font-outfit',
 });
 
+const siteUrl = 'https://bolao-copa-do-mundo-tau.vercel.app';
+
 export const metadata: Metadata = {
   title: 'Bolão Copa do Mundo 2026',
-  description: 'Palpite nos jogos da Copa do Mundo, acumule pontos e dispute com seus amigos no ranking geral!',
-  keywords: ['copa do mundo', 'bolão', 'futebol', 'amigos', 'palpites'],
+  description: 'Palpite nos jogos da Copa do Mundo 2026, acumule pontos e dispute com seus amigos no ranking geral!',
+  keywords: ['copa do mundo', 'bolão', 'futebol', 'amigos', 'palpites', '2026'],
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    title: 'Bolão Copa do Mundo 2026 ⚽',
+    description: 'Palpite nos jogos, acumule pontos e vença seus amigos na maior Copa do Mundo de todos os tempos!',
+    url: siteUrl,
+    siteName: 'Bolão Copa 2026',
+    locale: 'pt_BR',
+    type: 'website',
+    images: [{ url: '/og-image', width: 1200, height: 630, alt: 'Bolão Copa do Mundo 2026' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Bolão Copa do Mundo 2026 ⚽',
+    description: 'Palpite nos jogos e dispute com seus amigos!',
+    images: ['/og-image'],
+  },
 };
 
 export const viewport = {

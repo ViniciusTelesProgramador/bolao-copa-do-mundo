@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
 import { CaretDown, CaretUp } from '@phosphor-icons/react';
+import { formatMatchDate, formatMatchTime } from '@/lib/date';
 
 interface PredictionItem {
   id: string;
@@ -20,6 +21,7 @@ interface PredictionsListClientProps {
   predictions: PredictionItem[];
   predictionsCount: Record<string, number>;
   currentUserId: string | null;
+  allProfiles: { id: string; name: string }[];
 }
 
 const colors = [
@@ -38,13 +40,96 @@ const getAvatarStyle = (name: string) => {
   return colors[code % colors.length];
 };
 
-import { formatMatchDate, formatMatchTime } from '@/lib/date';
+function MatchAccordionContent({
+  match,
+  matchPredictions,
+  allProfiles,
+  currentUserId,
+}: {
+  match: Match;
+  matchPredictions: PredictionItem[];
+  allProfiles: { id: string; name: string }[];
+  currentUserId: string | null;
+}) {
+  const matchStarted = new Date(match.match_time) <= new Date();
+  const predictedUserIds = new Set(matchPredictions.map((p) => p.user_id));
+  const missingProfiles = matchStarted ? [] : allProfiles.filter((p) => !predictedUserIds.has(p.id));
+
+  return (
+    <div className="mt-2 bg-muted/20 border border-border-custom rounded-2xl overflow-hidden divide-y divide-border-custom/50 animate-fadeIn">
+      {matchPredictions.length === 0 && missingProfiles.length === 0 && (
+        <div className="p-4 text-center text-xs text-secondary italic select-none">
+          Nenhum palpite registrado para esse jogo.
+        </div>
+      )}
+      {matchPredictions.map((pred) => {
+        const isSelf = pred.user_id === currentUserId;
+        const avatarStyle = getAvatarStyle(pred.user_name);
+        const hasPoints = pred.points !== null;
+        const pointsColor =
+          pred.points === 3 ? 'text-green-500 bg-green-500/10 border-green-500/30' :
+          pred.points === 2 ? 'text-amber-500 bg-amber-500/10 border-amber-500/30' :
+          pred.points === 1 ? 'text-sky-400 bg-sky-500/10 border-sky-500/30' :
+          'text-secondary bg-muted border-border-custom/50';
+        return (
+          <div
+            key={pred.id}
+            className={`flex items-center justify-between px-4 py-3.5 text-xs sm:text-sm ${
+              isSelf ? 'bg-accent-custom/5 font-semibold' : ''
+            }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-black shrink-0 border select-none ${avatarStyle}`}>
+                {pred.user_name.substring(0, 1)}
+              </span>
+              <span
+                style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
+                className={`truncate font-bold ${isSelf ? 'text-accent-custom' : ''}`}
+              >
+                {pred.user_name}
+                {isSelf && (
+                  <span className="text-[9px] font-black text-accent-custom uppercase tracking-widest ml-1.5 bg-accent-custom/10 px-1.5 py-0.5 rounded-md border border-accent-custom/20 inline-block">
+                    Você
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
+                className={`font-extrabold text-sm tracking-wider select-all ${isSelf ? 'text-accent-custom' : ''}`}
+              >
+                {pred.home_score} x {pred.away_score}
+              </span>
+              {hasPoints && (
+                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg border shrink-0 ${pointsColor}`}>
+                  {pred.points}pts
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {missingProfiles.length > 0 && (
+        <div className="px-4 py-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-black text-secondary uppercase tracking-wider shrink-0">Sem palpite:</span>
+          {missingProfiles.map((p) => (
+            <span key={p.id} className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20">
+              {p.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PredictionsListClient({
   matches,
   predictions,
   predictionsCount,
-  currentUserId
+  currentUserId,
+  allProfiles,
 }: PredictionsListClientProps) {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
 
@@ -176,65 +261,12 @@ export default function PredictionsListClient({
                     </div>
 
                     {/* Detalhes dos Palpites (Accordion Content) */}
-                    {isOpen && (
-                      <div className="mt-2 bg-muted/20 border border-border-custom rounded-2xl overflow-hidden divide-y divide-border-custom/50 animate-fadeIn">
-                        {matchPredictions.length === 0 ? (
-                          <div className="p-4 text-center text-xs text-secondary italic select-none">
-                            Nenhum palpite registrado para esse jogo.
-                          </div>
-                        ) : (
-                          matchPredictions.map((pred) => {
-                            const isSelf = pred.user_id === currentUserId;
-                            const avatarStyle = getAvatarStyle(pred.user_name);
-                            const hasPoints = pred.points !== null;
-                            const pointsColor =
-                              pred.points === 3 ? 'text-green-500 bg-green-500/10 border-green-500/30' :
-                              pred.points === 2 ? 'text-amber-500 bg-amber-500/10 border-amber-500/30' :
-                              pred.points === 1 ? 'text-sky-400 bg-sky-500/10 border-sky-500/30' :
-                              'text-secondary bg-muted border-border-custom/50';
-                            return (
-                              <div
-                                key={pred.id}
-                                className={`flex items-center justify-between px-4 py-3.5 text-xs sm:text-sm ${
-                                  isSelf ? 'bg-accent-custom/5 font-semibold' : ''
-                                }`}
-                              >
-                                {/* Usuário (Avatar + Nome) */}
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span
-                                    className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-black shrink-0 border select-none ${avatarStyle}`}
-                                  >
-                                    {pred.user_name.substring(0, 1)}
-                                  </span>
-                                  <span
-                                    style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
-                                    className={`truncate font-bold ${isSelf ? 'text-accent-custom' : ''}`}
-                                  >
-                                    {pred.user_name}
-                                    {isSelf && <span className="text-[9px] font-black text-accent-custom uppercase tracking-widest ml-1.5 bg-accent-custom/10 px-1.5 py-0.5 rounded-md border border-accent-custom/20 inline-block">Você</span>}
-                                  </span>
-                                </div>
-
-                                {/* Palpite + Pontos */}
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span
-                                    style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
-                                    className={`font-extrabold text-sm tracking-wider select-all ${isSelf ? 'text-accent-custom' : ''}`}
-                                  >
-                                    {pred.home_score} x {pred.away_score}
-                                  </span>
-                                  {hasPoints && (
-                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg border shrink-0 ${pointsColor}`}>
-                                      {pred.points}pts
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
+                    {isOpen && MatchAccordionContent({
+                      match,
+                      matchPredictions,
+                      allProfiles,
+                      currentUserId,
+                    })}
                   </div>
                 );
               })}
