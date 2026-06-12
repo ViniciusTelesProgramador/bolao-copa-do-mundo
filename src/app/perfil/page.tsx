@@ -88,6 +88,9 @@ export default async function PerfilPage() {
     else break;
   }
 
+  const rankingEntry = ranking.find((r) => r.user_id === user.id);
+  const aproveitamento = rankingEntry?.aproveitamento ?? 0;
+
   // Dividir em palpites futuros (Aguardando) e passados (Finalizados/Pontuados)
   const awaitingResults = predictionsList.filter(
     (p) => p.match.home_score === null || p.match.away_score === null
@@ -130,7 +133,15 @@ export default async function PerfilPage() {
                     🔥 {currentStreak} em sequência
                   </span>
                 )}
-                <ShareButton position={userRankPosition || 99} totalPoints={totalPoints} acertos={totalAcertos} />
+                <ShareButton
+                position={userRankPosition || 99}
+                totalPoints={totalPoints}
+                acertos={totalAcertos}
+                aproveitamento={aproveitamento}
+                streak={currentStreak}
+                name={profile?.name || user.email?.split('@')[0] || '?'}
+                avatarUrl={profile?.avatar_url ?? null}
+              />
               </div>
             </div>
           </div>
