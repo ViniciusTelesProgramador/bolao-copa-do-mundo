@@ -137,12 +137,9 @@ export async function getRanking(): Promise<RankingEntry[]> {
   try {
     const supabase = await createClient();
 
-    // 1. Buscar todos os perfis públicos
-    // Para funcionar em ambiente onde usuários leem apenas o próprio perfil no RLS padrão,
-    // o ideal é que a tabela profiles tenha permissão de leitura para authenticated (ajustado no SQL).
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, name');
+      .select('id, name, avatar_url');
 
     if (profilesError || !profiles) {
       console.error('Erro ao buscar perfis:', profilesError);
@@ -187,6 +184,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
       return {
         user_id: p.id,
         name: p.name,
+        avatar_url: p.avatar_url ?? null,
         total_points: stats.total_points,
         predictions_count: stats.predictions_count,
         acertos_count: stats.acertos_count,
@@ -379,6 +377,31 @@ export async function updateNickname(newName: string) {
     const { error } = await supabase
       .from('profiles')
       .update({ name: trimmed })
+      .eq('id', user.id);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/perfil');
+    revalidatePath('/');
+    revalidatePath('/todos');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
+ * Salva a URL do avatar do usuário na tabela profiles.
+ */
+export async function updateAvatarUrl(avatarUrl: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: avatarUrl })
       .eq('id', user.id);
 
     if (error) return { success: false, error: error.message };

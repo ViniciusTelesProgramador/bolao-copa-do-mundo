@@ -117,11 +117,17 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
                   {/* Participante (Avatar + Nome + Palpites no Mobile) */}
                   <td className="py-3 px-2 font-bold text-sm min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-black shrink-0 border select-none ${avatarStyle}`}
-                      >
-                        {entry.name.substring(0, 1).toUpperCase()}
-                      </span>
+                      {entry.avatar_url ? (
+                        <img
+                          src={entry.avatar_url}
+                          alt={entry.name}
+                          className="w-7 h-7 rounded-full object-cover shrink-0 border border-border-custom"
+                        />
+                      ) : (
+                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-[10px] font-black shrink-0 border select-none ${avatarStyle}`}>
+                          {entry.name.substring(0, 1).toUpperCase()}
+                        </span>
+                      )}
                       <div className="flex flex-col min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span

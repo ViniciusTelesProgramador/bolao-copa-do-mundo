@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/date';
 import EditNicknameForm from '@/components/ui/EditNicknameForm';
 import ShareButton from '@/components/ui/ShareButton';
+import AvatarUpload from '@/components/ui/AvatarUpload';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export default async function PerfilPage() {
   // 2. Buscar perfil correspondente para pegar o nome
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name')
+    .select('name, avatar_url')
     .eq('id', user.id)
     .single();
 
@@ -103,29 +104,37 @@ export default async function PerfilPage() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-accent-custom/5 rounded-full blur-2xl pointer-events-none" />
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider">
-              {profile?.name || user.email?.split('@')[0]}
-            </h1>
-            {user.email && !user.email.endsWith('@bolao.interno') && (
-              <p className="text-xs text-secondary font-bold">{user.email}</p>
-            )}
-            <EditNicknameForm currentName={profile?.name || user.email?.split('@')[0] || ''} />
-            <div className="flex items-center gap-2 flex-wrap pt-1">
-              {userRankPosition > 0 && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">
-                  🏆 {userRankPosition}º Lugar
-                </span>
+          <div className="flex items-center gap-5">
+            <AvatarUpload
+              userId={user.id}
+              currentAvatarUrl={profile?.avatar_url ?? null}
+              name={profile?.name || user.email?.split('@')[0] || '?'}
+              size={80}
+            />
+            <div className="space-y-1.5">
+              <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider">
+                {profile?.name || user.email?.split('@')[0]}
+              </h1>
+              {user.email && !user.email.endsWith('@bolao.interno') && (
+                <p className="text-xs text-secondary font-bold">{user.email}</p>
               )}
-              {currentStreak >= 2 && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">
-                  🔥 {currentStreak} em sequência
-                </span>
-              )}
-              <ShareButton position={userRankPosition || 99} totalPoints={totalPoints} acertos={totalAcertos} />
+              <EditNicknameForm currentName={profile?.name || user.email?.split('@')[0] || ''} />
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                {userRankPosition > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">
+                    🏆 {userRankPosition}º Lugar
+                  </span>
+                )}
+                {currentStreak >= 2 && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-500/10 text-orange-500 border border-orange-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">
+                    🔥 {currentStreak} em sequência
+                  </span>
+                )}
+                <ShareButton position={userRankPosition || 99} totalPoints={totalPoints} acertos={totalAcertos} />
+              </div>
             </div>
           </div>
-          
+
           <div className="flex gap-4 sm:gap-6 border-t sm:border-t-0 sm:border-l border-border-custom pt-4 sm:pt-0 sm:pl-6">
             <div className="text-center">
               <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Pontos</span>

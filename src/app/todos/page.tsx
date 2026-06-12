@@ -33,9 +33,9 @@ export default async function TodosPalpitesPage() {
   // 3. Buscar todos os perfis (para mostrar quem não palpitou)
   const { data: profilesData } = await supabase
     .from('profiles')
-    .select('id, name')
+    .select('id, name, avatar_url')
     .order('name', { ascending: true });
-  const allProfiles = (profilesData || []) as { id: string; name: string }[];
+  const allProfiles = (profilesData || []) as { id: string; name: string; avatar_url?: string | null }[];
 
   // 4. Buscar todos os palpites
   const { data: predictionsData } = await supabase

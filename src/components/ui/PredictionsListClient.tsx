@@ -21,7 +21,7 @@ interface PredictionsListClientProps {
   predictions: PredictionItem[];
   predictionsCount: Record<string, number>;
   currentUserId: string | null;
-  allProfiles: { id: string; name: string }[];
+  allProfiles: { id: string; name: string; avatar_url?: string | null }[];
 }
 
 const colors = [
@@ -48,9 +48,10 @@ function MatchAccordionContent({
 }: {
   match: Match;
   matchPredictions: PredictionItem[];
-  allProfiles: { id: string; name: string }[];
+  allProfiles: { id: string; name: string; avatar_url?: string | null }[];
   currentUserId: string | null;
 }) {
+  const profileMap = new Map(allProfiles.map((p) => [p.id, p]));
   const matchStarted = new Date(match.match_time) <= new Date();
   const predictedUserIds = new Set(matchPredictions.map((p) => p.user_id));
   const missingProfiles = matchStarted ? [] : allProfiles.filter((p) => !predictedUserIds.has(p.id));
@@ -64,6 +65,8 @@ function MatchAccordionContent({
       )}
       {matchPredictions.map((pred) => {
         const isSelf = pred.user_id === currentUserId;
+        const profile = profileMap.get(pred.user_id);
+        const avatarUrl = profile?.avatar_url ?? null;
         const avatarStyle = getAvatarStyle(pred.user_name);
         const hasPoints = pred.points !== null;
         const pointsColor =
@@ -79,9 +82,13 @@ function MatchAccordionContent({
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-black shrink-0 border select-none ${avatarStyle}`}>
-                {pred.user_name.substring(0, 1)}
-              </span>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={pred.user_name} className="w-7 h-7 rounded-full object-cover shrink-0 border border-border-custom" />
+              ) : (
+                <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-black shrink-0 border select-none ${avatarStyle}`}>
+                  {pred.user_name.substring(0, 1)}
+                </span>
+              )}
               <span
                 style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
                 className={`truncate font-bold ${isSelf ? 'text-accent-custom' : ''}`}
