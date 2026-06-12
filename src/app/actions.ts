@@ -153,7 +153,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
     const { data: predictions, error: predictionsError } = await supabase
       .from('predictions')
       .select('user_id, points')
-      .is('points', 'not.null');
+      .not('points', 'is', null);
 
     if (predictionsError) {
       console.error('Erro ao buscar palpites para o ranking:', predictionsError);

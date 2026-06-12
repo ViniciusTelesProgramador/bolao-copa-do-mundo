@@ -143,11 +143,18 @@ export default function PredictionsListClient({
                           <FlagTeam flag={match.home_flag} name={match.home_team} reverse={true} className="text-xs sm:text-sm" />
                         </div>
 
-                        {/* Data e Hora */}
-                        <div className="mx-2 px-1.5 py-1 bg-muted border border-border-custom/80 rounded-xl text-[9px] sm:text-[10px] text-secondary font-extrabold whitespace-nowrap shrink-0 select-none flex flex-col items-center justify-center leading-normal">
-                          <span>{formatMatchDate(match.match_time)}</span>
-                          <span style={{ color: 'var(--text-primary)' }} className="font-black">{formatMatchTime(match.match_time)}</span>
-                        </div>
+                        {/* Data/Hora ou Placar Final */}
+                        {match.home_score !== null && match.away_score !== null ? (
+                          <div className="mx-2 px-2.5 py-1 bg-accent-custom/10 border border-accent-custom/30 rounded-xl text-[11px] font-black whitespace-nowrap shrink-0 select-none flex flex-col items-center justify-center leading-normal text-accent-custom">
+                            <span className="text-[8px] uppercase tracking-wider font-bold opacity-70">Resultado</span>
+                            <span>{match.home_score} x {match.away_score}</span>
+                          </div>
+                        ) : (
+                          <div className="mx-2 px-1.5 py-1 bg-muted border border-border-custom/80 rounded-xl text-[9px] sm:text-[10px] text-secondary font-extrabold whitespace-nowrap shrink-0 select-none flex flex-col items-center justify-center leading-normal">
+                            <span>{formatMatchDate(match.match_time)}</span>
+                            <span style={{ color: 'var(--text-primary)' }} className="font-black">{formatMatchTime(match.match_time)}</span>
+                          </div>
+                        )}
 
                         {/* Visitante */}
                         <div className="flex-1 flex justify-start truncate min-w-0 pl-1">
@@ -173,12 +180,18 @@ export default function PredictionsListClient({
                       <div className="mt-2 bg-muted/20 border border-border-custom rounded-2xl overflow-hidden divide-y divide-border-custom/50 animate-fadeIn">
                         {matchPredictions.length === 0 ? (
                           <div className="p-4 text-center text-xs text-secondary italic select-none">
-                            Nenhum palpite visível no momento (palpites de outros usuários ficam ocultos até o início do jogo).
+                            Nenhum palpite registrado para esse jogo.
                           </div>
                         ) : (
                           matchPredictions.map((pred) => {
                             const isSelf = pred.user_id === currentUserId;
                             const avatarStyle = getAvatarStyle(pred.user_name);
+                            const hasPoints = pred.points !== null;
+                            const pointsColor =
+                              pred.points === 3 ? 'text-green-500 bg-green-500/10 border-green-500/30' :
+                              pred.points === 2 ? 'text-amber-500 bg-amber-500/10 border-amber-500/30' :
+                              pred.points === 1 ? 'text-sky-400 bg-sky-500/10 border-sky-500/30' :
+                              'text-secondary bg-muted border-border-custom/50';
                             return (
                               <div
                                 key={pred.id}
@@ -202,13 +215,20 @@ export default function PredictionsListClient({
                                   </span>
                                 </div>
 
-                                {/* Placar */}
-                                <span
-                                  style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
-                                  className={`font-extrabold text-sm tracking-wider shrink-0 select-all ${isSelf ? 'text-accent-custom' : ''}`}
-                                >
-                                  {pred.home_score} x {pred.away_score}
-                                </span>
+                                {/* Palpite + Pontos */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span
+                                    style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
+                                    className={`font-extrabold text-sm tracking-wider select-all ${isSelf ? 'text-accent-custom' : ''}`}
+                                  >
+                                    {pred.home_score} x {pred.away_score}
+                                  </span>
+                                  {hasPoints && (
+                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg border shrink-0 ${pointsColor}`}>
+                                      {pred.points}pts
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             );
                           })

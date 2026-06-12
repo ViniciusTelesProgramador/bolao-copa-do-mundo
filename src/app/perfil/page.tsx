@@ -65,6 +65,7 @@ export default async function PerfilPage() {
   const exactHits = predictionsList.filter((p) => p.points === 3).length;
   const goalDiffHits = predictionsList.filter((p) => p.points === 2).length;
   const simpleOutcomeHits = predictionsList.filter((p) => p.points === 1).length;
+  const totalAcertos = exactHits + goalDiffHits + simpleOutcomeHits;
 
   // Dividir em palpites futuros (Aguardando) e passados (Finalizados/Pontuados)
   const awaitingResults = predictionsList.filter(
@@ -86,7 +87,9 @@ export default async function PerfilPage() {
             <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider">
               {profile?.name || user.email?.split('@')[0]}
             </h1>
-            <p className="text-xs text-secondary font-bold block">{user.email}</p>
+            {user.email && !user.email.endsWith('@bolao.interno') && (
+              <p className="text-xs text-secondary font-bold block">{user.email}</p>
+            )}
             {userRankPosition > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none mt-2">
                 🏆 {userRankPosition}º Lugar no Ranking
@@ -96,11 +99,15 @@ export default async function PerfilPage() {
           
           <div className="flex gap-4 sm:gap-6 border-t sm:border-t-0 sm:border-l border-border-custom pt-4 sm:pt-0 sm:pl-6">
             <div className="text-center">
-              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Pontos Totais</span>
+              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Pontos</span>
               <span className="text-3xl font-black text-accent-custom tracking-wider mt-1 block">{totalPoints}</span>
             </div>
             <div className="text-center">
-              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Palpites Feitos</span>
+              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Acertos</span>
+              <span className="text-3xl font-black text-green-500 tracking-wider mt-1 block">{totalAcertos}</span>
+            </div>
+            <div className="text-center">
+              <span className="text-secondary text-[10px] font-extrabold uppercase tracking-wider block">Palpites</span>
               <span className="text-3xl font-black text-primary tracking-wider mt-1 block">{totalPredictions}</span>
             </div>
           </div>
