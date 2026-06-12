@@ -5,16 +5,25 @@ import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
 import { saveMatchResult, shiftAllMatchTimes } from '@/app/actions';
-import { Plus, Check, Spinner, Trash, Calendar, Clock } from '@phosphor-icons/react';
+import { Plus, Check, Spinner, Trash, Calendar, Clock, Users } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
 import { formatMatchDateTime, parseLocalDateToUTC } from '@/lib/date';
+import { deleteUser } from '@/app/actions';
+
+interface AdminUser {
+  id: string;
+  name: string;
+  predictionCount: number;
+}
 
 interface AdminPanelClientProps {
   matches: Match[];
+  users: AdminUser[];
+  adminUserId: string;
 }
 
-export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
+export default function AdminPanelClient({ matches, users, adminUserId }: AdminPanelClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const supabase = createClient();
@@ -38,6 +47,27 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
 
   // Estados de fuso horário
   const [isShifting, setIsShifting] = useState(false);
+
+  // Estado de deleção de usuário
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  const handleDeleteUser = async (user: AdminUser) => {
+    if (!confirm(`Excluir "${user.name}"? Isso apagará também todos os ${user.predictionCount} palpites dele. Esta ação não pode ser desfeita.`)) return;
+    setDeletingUserId(user.id);
+    try {
+      const res = await deleteUser(user.id);
+      if (res.success) {
+        showToast(`Usuário "${user.name}" excluído com sucesso.`, 'success');
+        router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao excluir usuário.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
 
   const handleShiftTimes = async () => {
     if (!confirm('Deseja realmente sincronizar o fuso horário de TODOS os jogos para o horário oficial de Brasília/Fortaleza (UTC-3)?')) {
@@ -174,8 +204,20 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
     }
   };
 
+  const avatarColors = [
+    'bg-red-500/10 text-red-500 border-red-500/20',
+    'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    'bg-purple-500/10 text-purple-500 border-purple-500/20',
+    'bg-pink-500/10 text-pink-500 border-pink-500/20',
+    'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+    'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+  ];
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* Coluna Esquerda (Formulário + Fuso Horário) */}
       <div className="lg:col-span-4 space-y-6">
         {/* Formulário de Cadastro */}
@@ -419,6 +461,78 @@ export default function AdminPanelClient({ matches }: AdminPanelClientProps) {
           </div>
         )}
       </div>
+    </div>
+
+    {/* Seção de Usuários Cadastrados */}
+    <div className="bg-card border border-border-custom rounded-2xl p-6 shadow-xl">
+      <h2 className="text-base font-extrabold text-primary mb-1 uppercase tracking-wider flex items-center gap-2 select-none">
+        <Users size={18} className="text-accent-custom" />
+        Usuários Cadastrados
+        <span className="text-xs font-bold text-secondary normal-case tracking-normal ml-1">({users.length})</span>
+      </h2>
+      <p className="text-xs text-secondary mb-5 font-medium">
+        Exclua participantes indesejados. A exclusão remove o usuário e todos os palpites dele permanentemente.
+      </p>
+
+      {users.length === 0 ? (
+        <div className="text-center py-8 text-secondary text-sm font-bold">
+          Nenhum participante cadastrado ainda.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {users.map((u) => {
+            const isAdmin = u.id === adminUserId;
+            const colorIdx = u.name.charCodeAt(0) % avatarColors.length;
+            const avatarClass = avatarColors[colorIdx];
+            const isDeleting = deletingUserId === u.id;
+
+            return (
+              <div
+                key={u.id}
+                className={`flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
+                  isAdmin
+                    ? 'border-accent-custom/30 bg-accent-custom/5'
+                    : 'border-border-custom bg-muted/20 hover:border-secondary'
+                }`}
+              >
+                {/* Avatar + Info */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-black shrink-0 border select-none ${avatarClass}`}>
+                    {u.name.substring(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-bold text-primary truncate">{u.name}</span>
+                      {isAdmin && (
+                        <span className="text-[9px] font-black text-accent-custom uppercase tracking-widest bg-accent-custom/10 px-1.5 py-0.5 rounded-md border border-accent-custom/20 shrink-0">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-secondary font-bold block">
+                      {u.predictionCount} {u.predictionCount === 1 ? 'palpite' : 'palpites'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botão Excluir */}
+                {!isAdmin && (
+                  <button
+                    onClick={() => handleDeleteUser(u)}
+                    disabled={isDeleting}
+                    className="w-9 h-9 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer disabled:opacity-40"
+                    title={`Excluir ${u.name}`}
+                  >
+                    {isDeleting ? <Spinner size={13} className="animate-spin" /> : <Trash size={14} />}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
     </div>
   );
 }

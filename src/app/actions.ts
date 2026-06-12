@@ -393,6 +393,42 @@ export async function updateNickname(newName: string) {
 }
 
 /**
+ * Exclui um usuário pelo ID. Apenas admin pode executar.
+ * Remove também os palpites e o perfil associado.
+ */
+export async function deleteUser(userId: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) {
+      return { success: false, error: 'Acesso negado.' };
+    }
+
+    if (userId === user.id) {
+      return { success: false, error: 'Não é possível excluir sua própria conta.' };
+    }
+
+    const admin = createAdminClient();
+
+    await admin.from('predictions').delete().eq('user_id', userId);
+    await admin.from('profiles').delete().eq('id', userId);
+
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/admin');
+    revalidatePath('/');
+    revalidatePath('/todos');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
  * Cria um novo usuário com apelido + senha, sem confirmação de e-mail.
  * Usa o Admin API (service role) para marcar o e-mail como já confirmado.
  */

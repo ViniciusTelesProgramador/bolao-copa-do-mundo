@@ -1,4 +1,3 @@
-import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Match } from '@/types';
@@ -9,25 +8,30 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage() {
   const supabase = await createClient();
 
-  // 1. Validar autenticação
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
-  }
+  if (!user) redirect('/login');
 
-  // 2. Validar se é admin, caso contrário redirecionar
   const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  if (!adminEmail || user.email !== adminEmail) {
-    redirect('/');
-  }
+  if (!adminEmail || user.email !== adminEmail) redirect('/');
 
-  // 3. Buscar todas as partidas para o painel de gerenciamento
-  const { data: matchesData } = await supabase
-    .from('matches')
-    .select('*')
-    .order('match_time', { ascending: true });
+  const [matchesResult, profilesResult, predictionsResult] = await Promise.all([
+    supabase.from('matches').select('*').order('match_time', { ascending: true }),
+    supabase.from('profiles').select('id, name').order('name', { ascending: true }),
+    supabase.from('predictions').select('user_id'),
+  ]);
 
-  const matches: Match[] = matchesData || [];
+  const matches: Match[] = matchesResult.data || [];
+
+  const predCounts: Record<string, number> = {};
+  (predictionsResult.data || []).forEach((p: { user_id: string }) => {
+    predCounts[p.user_id] = (predCounts[p.user_id] || 0) + 1;
+  });
+
+  const users = (profilesResult.data || []).map((p: { id: string; name: string }) => ({
+    id: p.id,
+    name: p.name,
+    predictionCount: predCounts[p.id] || 0,
+  }));
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
@@ -36,11 +40,11 @@ export default async function AdminPage() {
           Painel do Administrador
         </h1>
         <p className="text-sm text-secondary mt-2 font-medium">
-          Cadastre novos confrontos da Copa do Mundo e lance os resultados oficiais das partidas para calcular os pontos de todos os palpites.
+          Gerencie partidas, resultados e participantes do bolão.
         </p>
       </div>
 
-      <AdminPanelClient matches={matches} />
+      <AdminPanelClient matches={matches} users={users} adminUserId={user.id} />
     </div>
   );
 }
