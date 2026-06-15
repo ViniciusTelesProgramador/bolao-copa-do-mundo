@@ -3,8 +3,123 @@
 import { useState } from 'react';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
-import { CaretDown, CaretUp } from '@phosphor-icons/react';
+import { CaretDown, CaretUp, Table } from '@phosphor-icons/react';
 import { formatMatchDate, formatMatchTime } from '@/lib/date';
+
+// ── Standings ─────────────────────────────────────────────────────────────────
+
+interface TeamStanding {
+  name: string;
+  flag: string;
+  J: number;
+  V: number;
+  E: number;
+  D: number;
+  GF: number;
+  GA: number;
+  GD: number;
+  P: number;
+}
+
+function computeGroupStandings(groupMatches: Match[]): TeamStanding[] {
+  const teams = new Map<string, TeamStanding>();
+
+  for (const m of groupMatches) {
+    if (!teams.has(m.home_team)) teams.set(m.home_team, { name: m.home_team, flag: m.home_flag, J: 0, V: 0, E: 0, D: 0, GF: 0, GA: 0, GD: 0, P: 0 });
+    if (!teams.has(m.away_team)) teams.set(m.away_team, { name: m.away_team, flag: m.away_flag, J: 0, V: 0, E: 0, D: 0, GF: 0, GA: 0, GD: 0, P: 0 });
+  }
+
+  for (const m of groupMatches) {
+    if (m.home_score === null || m.away_score === null) continue;
+    const h = teams.get(m.home_team)!;
+    const a = teams.get(m.away_team)!;
+    h.J++; a.J++;
+    h.GF += m.home_score; h.GA += m.away_score;
+    a.GF += m.away_score; a.GA += m.home_score;
+    h.GD = h.GF - h.GA;
+    a.GD = a.GF - a.GA;
+    if (m.home_score > m.away_score) {
+      h.V++; h.P += 3; a.D++;
+    } else if (m.away_score > m.home_score) {
+      a.V++; a.P += 3; h.D++;
+    } else {
+      h.E++; h.P++; a.E++; a.P++;
+    }
+  }
+
+  return [...teams.values()].sort((a, b) =>
+    b.P - a.P || b.GD - a.GD || b.GF - a.GF || a.name.localeCompare(b.name)
+  );
+}
+
+function GroupStandingsTable({ standings }: { standings: TeamStanding[] }) {
+  const hasPlayed = standings.some(s => s.J > 0);
+
+  return (
+    <div className="mb-3 rounded-2xl border border-border-custom bg-card/60 overflow-hidden animate-fadeIn">
+      {/* Table header */}
+      <div className="grid items-center px-3 py-1.5 border-b border-border-custom/50 bg-muted/40"
+        style={{ gridTemplateColumns: '1.4rem 1fr 1.8rem 2rem 2rem 2rem 2.4rem' }}>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider">#</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider">Time</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">J</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">V</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">E</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">D</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-right">Pts</span>
+      </div>
+
+      {standings.map((team, idx) => {
+        const qualifies = idx < 2 && hasPlayed;
+        return (
+          <div
+            key={team.name}
+            className={`grid items-center px-3 py-2 border-b border-border-custom/30 last:border-b-0 transition-colors ${
+              qualifies ? 'bg-emerald-500/5' : ''
+            }`}
+            style={{ gridTemplateColumns: '1.4rem 1fr 1.8rem 2rem 2rem 2rem 2.4rem' }}
+          >
+            {/* Pos + qualify indicator */}
+            <div className="flex items-center gap-1">
+              <div className={`w-0.5 h-4 rounded-full shrink-0 ${qualifies ? 'bg-emerald-500' : 'bg-transparent'}`} />
+              <span className="text-[10px] font-black text-secondary">{idx + 1}</span>
+            </div>
+
+            {/* Flag + name */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              {team.flag ? (
+                <img src={team.flag} alt={team.name} className="w-4 h-3 object-cover rounded-[2px] shrink-0" />
+              ) : (
+                <span className="w-4 h-3 bg-muted rounded-[2px] shrink-0" />
+              )}
+              <span className={`text-[11px] font-bold truncate ${qualifies ? 'text-primary' : 'text-secondary'}`}>
+                {team.name}
+              </span>
+            </div>
+
+            {/* Stats */}
+            <span className="text-[11px] text-secondary font-bold text-center">{team.J}</span>
+            <span className="text-[11px] text-secondary font-bold text-center">{team.V}</span>
+            <span className="text-[11px] text-secondary font-bold text-center">{team.E}</span>
+            <span className="text-[11px] text-secondary font-bold text-center">{team.D}</span>
+            <span className={`text-[12px] font-black text-right ${qualifies ? 'text-emerald-500' : 'text-primary'}`}>
+              {team.P}
+            </span>
+          </div>
+        );
+      })}
+
+      {!hasPlayed && (
+        <p className="px-3 py-2.5 text-[11px] text-secondary italic">Nenhum jogo disputado ainda neste grupo.</p>
+      )}
+
+      <div className="px-3 py-1.5 border-t border-border-custom/30 bg-muted/20 flex items-center gap-1.5">
+        <div className="w-0.5 h-3 rounded-full bg-emerald-500" />
+        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">Avança para as oitavas</span>
+      </div>
+    </div>
+  );
+}
 
 interface PredictionItem {
   id: string;
@@ -139,9 +254,14 @@ export default function PredictionsListClient({
   allProfiles,
 }: PredictionsListClientProps) {
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [standingsGroupKey, setStandingsGroupKey] = useState<string | null>(null);
 
   const toggleExpand = (matchId: string) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
+  };
+
+  const toggleStandings = (groupKey: string) => {
+    setStandingsGroupKey(standingsGroupKey === groupKey ? null : groupKey);
   };
 
   // Agrupar partidas por Fase/Grupo
@@ -200,6 +320,10 @@ export default function PredictionsListClient({
           ? groupKey.replace('Grupo ', '').trim().substring(0, 1)
           : '🏆';
 
+        const isGroupStage = groupKey.toLowerCase().startsWith('grupo ');
+        const standingsOpen = standingsGroupKey === groupKey;
+        const standings = isGroupStage ? computeGroupStandings(groupMatches) : [];
+
         return (
           <div key={groupKey} className="space-y-3">
             {/* Header do Grupo */}
@@ -210,7 +334,27 @@ export default function PredictionsListClient({
               <h3 className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest select-none">
                 {groupKey}
               </h3>
+
+              {isGroupStage && (
+                <button
+                  onClick={() => toggleStandings(groupKey)}
+                  className={`ml-auto flex items-center gap-1.5 text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all cursor-pointer select-none ${
+                    standingsOpen
+                      ? 'bg-accent-custom/10 border-accent-custom/40 text-accent-custom'
+                      : 'bg-muted border-border-custom/60 text-secondary hover:border-secondary hover:text-primary'
+                  }`}
+                >
+                  <Table size={11} weight={standingsOpen ? 'fill' : 'regular'} />
+                  <span>Classificação</span>
+                  {standingsOpen ? <CaretUp size={9} /> : <CaretDown size={9} />}
+                </button>
+              )}
             </div>
+
+            {/* Tabela de classificação */}
+            {isGroupStage && standingsOpen && (
+              <GroupStandingsTable standings={standings} />
+            )}
 
             {/* Lista de Partidas do Grupo */}
             <div className="space-y-2.5">
