@@ -194,6 +194,7 @@ export default async function PerfilPage() {
         artilheiroPoints={profile?.artilheiro_points ?? 0}
         isLocked={artilheiroLocked}
         deadlineLabel={artilheiroDeadlineLabel}
+        deadline={deadlineStr}
       />
 
       {predictionsList.length === 0 ? (

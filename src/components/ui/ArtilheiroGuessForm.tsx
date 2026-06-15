@@ -4,15 +4,17 @@ import { useState, useTransition } from 'react';
 import { saveArtilheiroGuess } from '@/app/actions';
 import { SoccerBall, PencilSimple, Check, X, Spinner, Trophy, Lock } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
+import ArtilheiroCountdown from './ArtilheiroCountdown';
 
 interface ArtilheiroGuessFormProps {
   currentGuess: string | null;
   artilheiroPoints: number;
   isLocked: boolean;
   deadlineLabel: string;
+  deadline: string;
 }
 
-export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, isLocked, deadlineLabel }: ArtilheiroGuessFormProps) {
+export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, isLocked, deadlineLabel, deadline }: ArtilheiroGuessFormProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentGuess || '');
@@ -58,6 +60,8 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, is
           </span>
         )}
       </div>
+
+      {!isLocked && !currentGuess && <ArtilheiroCountdown deadline={deadline} />}
 
       {!editing ? (
         <div className="flex items-center justify-between gap-3">
