@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import FlagTeam from './FlagTeam';
+import FlagTeam, { getCountryCode } from './FlagTeam';
 import { Match } from '@/types';
 import { CaretDown, CaretUp, Table } from '@phosphor-icons/react';
 import { formatMatchDate, formatMatchTime } from '@/lib/date';
@@ -52,6 +52,8 @@ function computeGroupStandings(groupMatches: Match[]): TeamStanding[] {
   );
 }
 
+const COLS = '1.4rem 1fr 1.8rem 2rem 2rem 2rem 2.8rem 2.4rem';
+
 function GroupStandingsTable({ standings }: { standings: TeamStanding[] }) {
   const hasPlayed = standings.some(s => s.J > 0);
 
@@ -59,25 +61,27 @@ function GroupStandingsTable({ standings }: { standings: TeamStanding[] }) {
     <div className="mb-3 rounded-2xl border border-border-custom bg-card/60 overflow-hidden animate-fadeIn">
       {/* Table header */}
       <div className="grid items-center px-3 py-1.5 border-b border-border-custom/50 bg-muted/40"
-        style={{ gridTemplateColumns: '1.4rem 1fr 1.8rem 2rem 2rem 2rem 2.4rem' }}>
+        style={{ gridTemplateColumns: COLS }}>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider">#</span>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider">Time</span>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">J</span>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">V</span>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">E</span>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-center">D</span>
+        <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-right">SG</span>
         <span className="text-[9px] font-black text-secondary uppercase tracking-wider text-right">Pts</span>
       </div>
 
       {standings.map((team, idx) => {
         const qualifies = idx < 2 && hasPlayed;
+        const countryCode = getCountryCode(team.flag, team.name);
         return (
           <div
             key={team.name}
             className={`grid items-center px-3 py-2 border-b border-border-custom/30 last:border-b-0 transition-colors ${
               qualifies ? 'bg-emerald-500/5' : ''
             }`}
-            style={{ gridTemplateColumns: '1.4rem 1fr 1.8rem 2rem 2rem 2rem 2.4rem' }}
+            style={{ gridTemplateColumns: COLS }}
           >
             {/* Pos + qualify indicator */}
             <div className="flex items-center gap-1">
@@ -87,10 +91,15 @@ function GroupStandingsTable({ standings }: { standings: TeamStanding[] }) {
 
             {/* Flag + name */}
             <div className="flex items-center gap-1.5 min-w-0">
-              {team.flag ? (
-                <img src={team.flag} alt={team.name} className="w-4 h-3 object-cover rounded-[2px] shrink-0" />
+              {countryCode ? (
+                <img
+                  src={`https://flagcdn.com/w40/${countryCode}.png`}
+                  alt={team.name}
+                  className="w-5 h-3.5 object-cover rounded-[2px] shrink-0 border border-border-custom/30"
+                  loading="lazy"
+                />
               ) : (
-                <span className="w-4 h-3 bg-muted rounded-[2px] shrink-0" />
+                <span className="text-base leading-none shrink-0">{team.flag}</span>
               )}
               <span className={`text-[11px] font-bold truncate ${qualifies ? 'text-primary' : 'text-secondary'}`}>
                 {team.name}
@@ -102,6 +111,9 @@ function GroupStandingsTable({ standings }: { standings: TeamStanding[] }) {
             <span className="text-[11px] text-secondary font-bold text-center">{team.V}</span>
             <span className="text-[11px] text-secondary font-bold text-center">{team.E}</span>
             <span className="text-[11px] text-secondary font-bold text-center">{team.D}</span>
+            <span className={`text-[11px] font-bold text-right ${team.GD > 0 ? 'text-emerald-500' : team.GD < 0 ? 'text-red-400' : 'text-secondary'}`}>
+              {team.GD > 0 ? `+${team.GD}` : team.GD}
+            </span>
             <span className={`text-[12px] font-black text-right ${qualifies ? 'text-emerald-500' : 'text-primary'}`}>
               {team.P}
             </span>

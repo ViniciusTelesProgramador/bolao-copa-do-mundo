@@ -117,7 +117,7 @@ const FLAG_MAP: Record<string, string> = {
 };
 
 // Converte emoji de bandeira ou código ISO para o código de 2 letras minúsculo (ex: "br", "us")
-function getCountryCode(flag: string, name: string): string {
+export function getCountryCode(flag: string, name: string): string {
   if (!flag) return '';
   const trimmedFlag = flag.trim();
   const cleanName = name ? name.trim().toLowerCase() : '';
