@@ -80,6 +80,75 @@ export async function savePrediction(
 }
 
 /**
+ * Sincroniza resultados da Copa 2026 via football-data.org. Apenas admin.
+ */
+export async function syncMatchScores() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) return { success: false, error: 'Acesso negado.' };
+
+    const { fetchFinishedWCMatches, teamsMatch } = await import('@/lib/football-data');
+    const admin = createAdminClient();
+
+    const { data: ourMatches } = await admin
+      .from('matches')
+      .select('id, home_team, away_team, match_time')
+      .is('home_score', null);
+
+    if (!ourMatches || ourMatches.length === 0) {
+      return { success: true, updated: 0, message: 'Nenhuma partida pendente.' };
+    }
+
+    const apiMatches = await fetchFinishedWCMatches();
+    if (apiMatches.length === 0) {
+      return { success: true, updated: 0, message: 'Nenhum resultado disponível na API ainda.' };
+    }
+
+    let updated = 0;
+    const errors: string[] = [];
+
+    for (const ourMatch of ourMatches) {
+      const ourDate = new Date(ourMatch.match_time).toISOString().slice(0, 10);
+      const apiMatch = apiMatches.find((am) => {
+        const apiDate = new Date(am.utcDate).toISOString().slice(0, 10);
+        if (apiDate !== ourDate) return false;
+        return teamsMatch(ourMatch.home_team, am.homeTeam.name) && teamsMatch(ourMatch.away_team, am.awayTeam.name);
+      });
+
+      if (!apiMatch) continue;
+      const home = apiMatch.score.fullTime.home;
+      const away = apiMatch.score.fullTime.away;
+      if (home === null || away === null) continue;
+
+      const { error } = await admin.from('matches').update({ home_score: home, away_score: away }).eq('id', ourMatch.id);
+      if (error) errors.push(`${ourMatch.home_team} x ${ourMatch.away_team}: ${error.message}`);
+      else updated++;
+    }
+
+    if (updated > 0) {
+      revalidatePath('/');
+      revalidatePath('/palpites');
+      revalidatePath('/perfil');
+      revalidatePath('/todos');
+      revalidatePath('/admin');
+    }
+
+    return {
+      success: true,
+      updated,
+      errors: errors.length > 0 ? errors : undefined,
+      message: updated > 0 ? `${updated} placar(es) atualizado(s) automaticamente!` : 'Nenhum novo resultado disponível.',
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Erro inesperado.' };
+  }
+}
+
+/**
  * Salva o resultado final de uma partida. Apenas admin pode executar.
  * Dispara automaticamente a trigger de recálculo de pontuações no banco de dados.
  */

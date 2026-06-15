@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
 import { formatMatchDateTime, parseLocalDateToUTC } from '@/lib/date';
 import { deleteUser, confirmArtilheiro, adminResetPassword } from '@/app/actions';
+import { ArrowsClockwise } from '@phosphor-icons/react';
 
 interface AdminUser {
   id: string;
@@ -49,6 +50,30 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
 
   // Estados de fuso horário
   const [isShifting, setIsShifting] = useState(false);
+
+  // Estado de sincronização de placares
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ updated: number; errors?: string[] } | null>(null);
+
+  const handleSyncScores = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const { syncMatchScores } = await import('@/app/actions');
+      const res = await syncMatchScores();
+      if (res.success) {
+        setSyncResult({ updated: res.updated ?? 0, errors: res.errors });
+        showToast(res.message || `${res.updated} placar(es) atualizado(s).`, 'success');
+        if ((res.updated ?? 0) > 0) router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao sincronizar.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Estado de deleção de usuário
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
@@ -412,10 +437,29 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
 
       {/* Lista de Partidas sem Resultado (Lado Direito, 8 Colunas) */}
       <div className="lg:col-span-8 space-y-5">
-        <h2 className="text-base font-extrabold text-primary uppercase tracking-wider flex items-center gap-2 pb-2.5 border-b border-border-custom">
-          <Calendar size={18} className="text-accent-custom" />
-          Lançar Resultados
-        </h2>
+        <div className="flex items-center justify-between pb-2.5 border-b border-border-custom">
+          <h2 className="text-base font-extrabold text-primary uppercase tracking-wider flex items-center gap-2">
+            <Calendar size={18} className="text-accent-custom" />
+            Lançar Resultados
+          </h2>
+          <button
+            onClick={handleSyncScores}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-custom/10 hover:bg-accent-custom/20 text-accent-custom border border-accent-custom/20 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 cursor-pointer"
+            title="Sincronizar placares automaticamente via football-data.org"
+          >
+            <ArrowsClockwise size={13} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Sincronizando...' : 'Auto-Sync'}
+          </button>
+        </div>
+        {syncResult && (
+          <div className={`text-xs font-bold px-3 py-2 rounded-xl border ${syncResult.updated > 0 ? 'bg-accent-custom/5 border-accent-custom/20 text-accent-custom' : 'bg-muted border-border-custom text-secondary'}`}>
+            {syncResult.updated > 0 ? `✓ ${syncResult.updated} placar(es) sincronizado(s) da Copa 2026.` : 'Nenhum novo resultado disponível.'}
+            {syncResult.errors && syncResult.errors.length > 0 && (
+              <span className="block text-amber-500 mt-1">Avisos: {syncResult.errors.join(' | ')}</span>
+            )}
+          </div>
+        )}
 
         {pendingMatches.length === 0 ? (
           <div className="bg-card border border-border-custom rounded-2xl p-10 text-center text-secondary text-sm font-bold shadow-md">

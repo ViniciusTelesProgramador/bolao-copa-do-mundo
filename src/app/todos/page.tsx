@@ -1,6 +1,7 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
+import { fetchPlayerImage } from '@/lib/football-data';
 import { Match } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,15 @@ export default async function TodosPalpitesPage() {
     .select('id, name, avatar_url, artilheiro_guess, artilheiro_points')
     .order('name', { ascending: true });
   const allProfiles = (profilesData || []) as { id: string; name: string; avatar_url?: string | null; artilheiro_guess?: string | null; artilheiro_points?: number }[];
+
+  // 3b. Buscar fotos dos jogadores palpitados (TheSportsDB, sem key)
+  const uniqueGuesses = [...new Set(allProfiles.map(p => p.artilheiro_guess).filter(Boolean))] as string[];
+  const playerImages: Record<string, string | null> = {};
+  await Promise.all(
+    uniqueGuesses.map(async (name) => {
+      playerImages[name] = await fetchPlayerImage(name);
+    })
+  );
 
   // 4. Buscar todos os palpites
   const { data: predictionsData } = await supabase
@@ -113,6 +123,7 @@ export default async function TodosPalpitesPage() {
               const color = bgColors[(p.name.charCodeAt(0) || 0) % bgColors.length];
               const acertou = (p.artilheiro_points ?? 0) > 0;
               const isSelf = p.id === user?.id;
+              const playerImg = p.artilheiro_guess ? playerImages[p.artilheiro_guess] : null;
               return (
                 <div
                   key={p.id}
@@ -122,7 +133,7 @@ export default async function TodosPalpitesPage() {
                               'bg-card border-border-custom'
                   }`}
                 >
-                  {/* Avatar */}
+                  {/* Avatar do participante */}
                   {p.avatar_url ? (
                     <img src={p.avatar_url} alt={p.name} className="w-8 h-8 rounded-full object-cover shrink-0 border border-border-custom" />
                   ) : (
@@ -136,9 +147,14 @@ export default async function TodosPalpitesPage() {
                       {p.name}{isSelf && <span className="ml-1 text-[9px] opacity-70">(você)</span>}
                     </p>
                     {p.artilheiro_guess ? (
-                      <p className={`text-xs font-bold truncate ${acertou ? 'text-amber-500' : 'text-secondary'}`}>
-                        {acertou && '🏆 '}{p.artilheiro_guess}
-                      </p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {playerImg && (
+                          <img src={playerImg} alt={p.artilheiro_guess} className="w-6 h-6 rounded-full object-cover shrink-0 border border-border-custom bg-muted" />
+                        )}
+                        <p className={`text-xs font-bold truncate ${acertou ? 'text-amber-500' : 'text-secondary'}`}>
+                          {acertou && '🏆 '}{p.artilheiro_guess}
+                        </p>
+                      </div>
                     ) : (
                       <p className="text-[10px] text-secondary italic">sem palpite</p>
                     )}
