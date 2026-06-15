@@ -39,13 +39,18 @@ export default async function TodosPalpitesPage() {
   const allProfiles = (profilesData || []) as { id: string; name: string; avatar_url?: string | null; artilheiro_guess?: string | null; artilheiro_points?: number }[];
 
   // 3b. Buscar fotos dos jogadores palpitados (TheSportsDB, sem key)
+  // Promise.allSettled garante que falhas individuais não quebram a página.
+  // fetchPlayerImage já tem timeout de 2s, então no pior caso aguarda 2s e segue.
   const uniqueGuesses = [...new Set(allProfiles.map(p => p.artilheiro_guess).filter(Boolean))] as string[];
   const playerImages: Record<string, string | null> = {};
-  await Promise.all(
-    uniqueGuesses.map(async (name) => {
-      playerImages[name] = await fetchPlayerImage(name);
-    })
-  );
+  if (uniqueGuesses.length > 0) {
+    const results = await Promise.allSettled(
+      uniqueGuesses.map((name) => fetchPlayerImage(name).then(img => ({ name, img })))
+    );
+    results.forEach((r) => {
+      if (r.status === 'fulfilled') playerImages[r.value.name] = r.value.img;
+    });
+  }
 
   // 4. Buscar todos os palpites
   const { data: predictionsData } = await supabase

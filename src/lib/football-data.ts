@@ -14,9 +14,9 @@ const EN_TO_PT: Record<string, string[]> = {
   'brazil':                    ['brasil', 'brazil'],
   'argentina':                 ['argentina'],
   'uruguay':                   ['uruguai', 'uruguay'],
-  'colombia':                  ['colombia', 'colômbia', 'colombia'],
+  'colombia':                  ['colombia', 'colombia'],
   'ecuador':                   ['equador', 'ecuador'],
-  'bolivia':                   ['bolivia', 'bolívia', 'bolivia'],
+  'bolivia':                   ['bolivia', 'bolivia'],
   'venezuela':                 ['venezuela'],
   'chile':                     ['chile'],
   'paraguay':                  ['paraguai', 'paraguay'],
@@ -70,7 +70,7 @@ const EN_TO_PT: Record<string, string[]> = {
   'tunisia':                   ['tunisia'],
   'mali':                      ['mali'],
   'democratic republic of congo': ['republica democratica do congo', 'dr congo', 'congo'],
-  "cote d'ivoire":             ['costa do marfim', 'ivory coast'],
+  "cote d ivoire":             ['costa do marfim', 'ivory coast'],
   'ivory coast':               ['costa do marfim'],
   'japan':                     ['japao', 'japan'],
   'south korea':               ['coreia do sul', 'south korea'],
@@ -87,7 +87,7 @@ const EN_TO_PT: Record<string, string[]> = {
   'united arab emirates':      ['emirados arabes', 'uae'],
 };
 
-// Mapa reverso: normalized PT → English key
+// Mapa reverso: normalized PT → English key (construído uma vez)
 const PT_TO_EN_KEY = new Map<string, string>();
 for (const [enKey, ptVariants] of Object.entries(EN_TO_PT)) {
   const normalizedEn = normalizeName(enKey);
@@ -142,14 +142,17 @@ export async function fetchFinishedWCMatches(): Promise<FDMatch[]> {
   return (json.matches || []) as FDMatch[];
 }
 
-// Busca foto de jogador via TheSportsDB (sem API key)
+// Busca foto de jogador via TheSportsDB com timeout de 2s para não travar a página
 export async function fetchPlayerImage(playerName: string): Promise<string | null> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
     const encoded = encodeURIComponent(playerName);
     const res = await fetch(
       `https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encoded}`,
-      { next: { revalidate: 3600 } }
+      { signal: controller.signal, next: { revalidate: 3600 } }
     );
+    clearTimeout(timeout);
     if (!res.ok) return null;
     const json = await res.json();
     const player = json.player?.[0];
