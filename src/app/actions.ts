@@ -405,19 +405,10 @@ export async function saveArtilheiroGuess(playerName: string) {
     if (!trimmed) return { success: false, error: 'Digite o nome do jogador.' };
     if (trimmed.length > 60) return { success: false, error: 'Nome muito longo.' };
 
-    // Trava 72h após o primeiro jogo cadastrado
-    const { data: firstMatch } = await supabase
-      .from('matches')
-      .select('match_time')
-      .order('match_time', { ascending: true })
-      .limit(1)
-      .single();
-
-    if (firstMatch) {
-      const deadline = new Date(firstMatch.match_time).getTime() + 72 * 60 * 60 * 1000;
-      if (Date.now() > deadline) {
-        return { success: false, error: 'Prazo encerrado. Os palpites de artilheiro foram fechados 72h após o início da Copa.' };
-      }
+    // Prazo fixo: 72h a partir de 15/06/2026 (ou ARTILHEIRO_DEADLINE env var)
+    const deadlineStr = process.env.ARTILHEIRO_DEADLINE || '2026-06-18T23:59:59-03:00';
+    if (Date.now() > new Date(deadlineStr).getTime()) {
+      return { success: false, error: 'Prazo encerrado. Os palpites de artilheiro foram fechados.' };
     }
 
     const { error } = await supabase
