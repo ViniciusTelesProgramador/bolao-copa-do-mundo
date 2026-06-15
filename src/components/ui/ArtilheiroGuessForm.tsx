@@ -2,15 +2,17 @@
 
 import { useState, useTransition } from 'react';
 import { saveArtilheiroGuess } from '@/app/actions';
-import { SoccerBall, PencilSimple, Check, X, Spinner, Trophy } from '@phosphor-icons/react';
+import { SoccerBall, PencilSimple, Check, X, Spinner, Trophy, Lock } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 
 interface ArtilheiroGuessFormProps {
   currentGuess: string | null;
   artilheiroPoints: number;
+  isLocked: boolean;
+  deadlineLabel: string;
 }
 
-export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints }: ArtilheiroGuessFormProps) {
+export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, isLocked, deadlineLabel }: ArtilheiroGuessFormProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentGuess || '');
@@ -39,14 +41,20 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints }: 
   };
 
   return (
-    <div className="bg-card border border-border-custom rounded-2xl p-5 shadow-md">
+    <div className={`bg-card border rounded-2xl p-5 shadow-md mb-6 ${isLocked ? 'border-border-custom/40 opacity-80' : 'border-border-custom'}`}>
       <div className="flex items-center gap-2 mb-3">
-        <SoccerBall size={16} weight="fill" className="text-accent-custom shrink-0" />
+        <SoccerBall size={16} weight="fill" className={isLocked ? 'text-secondary' : 'text-accent-custom'} />
         <h3 className="text-xs font-black text-primary uppercase tracking-wider">Artilheiro da Copa</h3>
         {artilheiroPoints > 0 && (
           <span className="flex items-center gap-1 text-[10px] font-black text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
             <Trophy size={10} weight="fill" />
             +5 pts
+          </span>
+        )}
+        {isLocked && (
+          <span className="flex items-center gap-1 text-[10px] font-black text-secondary bg-muted border border-border-custom px-2 py-0.5 rounded-lg ml-auto">
+            <Lock size={10} weight="fill" />
+            Encerrado
           </span>
         )}
       </div>
@@ -57,21 +65,27 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints }: 
             {currentGuess ? (
               <p className="text-sm font-bold text-primary">{currentGuess}</p>
             ) : (
-              <p className="text-xs text-secondary italic">Nenhum palpite feito ainda.</p>
+              <p className="text-xs text-secondary italic">
+                {isLocked ? 'Nenhum palpite foi feito antes do prazo.' : 'Nenhum palpite feito ainda.'}
+              </p>
             )}
             <p className="text-[10px] text-secondary mt-0.5">
               {artilheiroPoints > 0
                 ? '✓ Você acertou o artilheiro! +5 pts no total.'
-                : 'Acerte o artilheiro e ganhe 5 pts extras.'}
+                : isLocked
+                  ? `Prazo encerrado em ${deadlineLabel}.`
+                  : `Acerte o artilheiro e ganhe 5 pts extras. Prazo: ${deadlineLabel}.`}
             </p>
           </div>
-          <button
-            onClick={() => setEditing(true)}
-            className="flex items-center gap-1.5 text-xs text-secondary hover:text-accent-custom font-bold transition-colors cursor-pointer shrink-0"
-          >
-            <PencilSimple size={13} />
-            {currentGuess ? 'Alterar' : 'Palpitar'}
-          </button>
+          {!isLocked && (
+            <button
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1.5 text-xs text-secondary hover:text-accent-custom font-bold transition-colors cursor-pointer shrink-0"
+            >
+              <PencilSimple size={13} />
+              {currentGuess ? 'Alterar' : 'Palpitar'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-2">

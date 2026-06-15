@@ -32,8 +32,23 @@ export default async function PerfilPage() {
     .eq('id', user.id)
     .single();
 
-  // 3. Buscar ranking para calcular a posição do usuário
+  // 3. Buscar ranking e prazo do artilheiro (72h após 1º jogo)
   const ranking = await getRanking();
+
+  const { data: firstMatchData } = await supabase
+    .from('matches')
+    .select('match_time')
+    .order('match_time', { ascending: true })
+    .limit(1)
+    .single();
+
+  const artilheiroDeadline = firstMatchData
+    ? new Date(new Date(firstMatchData.match_time).getTime() + 72 * 60 * 60 * 1000)
+    : null;
+  const artilheiroLocked = artilheiroDeadline ? new Date() > artilheiroDeadline : false;
+  const artilheiroDeadlineLabel = artilheiroDeadline
+    ? artilheiroDeadline.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Fortaleza' })
+    : '—';
   const userRankPosition = ranking.findIndex((r) => r.user_id === user.id) + 1;
 
   // 4. Buscar palpites do usuário junto com os dados dos jogos
@@ -194,6 +209,8 @@ export default async function PerfilPage() {
       <ArtilheiroGuessForm
         currentGuess={profile?.artilheiro_guess ?? null}
         artilheiroPoints={profile?.artilheiro_points ?? 0}
+        isLocked={artilheiroLocked}
+        deadlineLabel={artilheiroDeadlineLabel}
       />
 
       {predictionsList.length === 0 ? (
