@@ -1,7 +1,7 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
-import { fetchPlayerImage } from '@/lib/football-data';
+import { fetchPlayerImage, normalizeName } from '@/lib/football-data';
 import { Match } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -13,93 +13,104 @@ interface RawPrediction {
   home_score: number;
   away_score: number;
   points: number | null;
-  profiles: {
-    name: string;
-  } | null;
+  profiles: { name: string } | null;
+}
+
+type Profile = {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
+  artilheiro_guess?: string | null;
+  artilheiro_points?: number;
+};
+
+const AVATAR_COLORS = [
+  'bg-red-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500',
+  'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-cyan-500',
+];
+
+function avatarColor(name: string) {
+  return AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 }
 
 export default async function TodosPalpitesPage() {
   const supabase = await createClient();
-  
-  // 1. Obter usuário logado
+
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 2. Buscar todas as partidas ordenadas
   const { data: matchesData } = await supabase
     .from('matches')
     .select('*')
     .order('match_time', { ascending: true });
   const matches: Match[] = matchesData || [];
 
-  // 3. Buscar todos os perfis (para mostrar quem não palpitou e artilheiro)
   const { data: profilesData } = await supabase
     .from('profiles')
     .select('id, name, avatar_url, artilheiro_guess, artilheiro_points')
     .order('name', { ascending: true });
-  const allProfiles = (profilesData || []) as { id: string; name: string; avatar_url?: string | null; artilheiro_guess?: string | null; artilheiro_points?: number }[];
+  const allProfiles = (profilesData || []) as Profile[];
 
-  // 3b. Buscar fotos dos jogadores palpitados (TheSportsDB, sem key)
-  // Promise.allSettled garante que falhas individuais não quebram a página.
-  // fetchPlayerImage já tem timeout de 2s, então no pior caso aguarda 2s e segue.
-  const uniqueGuesses = [...new Set(allProfiles.map(p => p.artilheiro_guess).filter(Boolean))] as string[];
-  const playerImages: Record<string, string | null> = {};
-  if (uniqueGuesses.length > 0) {
-    const results = await Promise.allSettled(
-      uniqueGuesses.map((name) => fetchPlayerImage(name).then(img => ({ name, img })))
+  // Agrupar palpites por nome normalizado (une "Mbappé" com "Mbappe", etc.)
+  const groups = new Map<string, {
+    canonicalName: string;
+    voters: Profile[];
+    playerImg: string | null;
+  }>();
+
+  allProfiles.forEach(p => {
+    if (!p.artilheiro_guess) return;
+    const key = normalizeName(p.artilheiro_guess);
+    if (!groups.has(key)) {
+      groups.set(key, { canonicalName: p.artilheiro_guess, voters: [], playerImg: null });
+    }
+    const g = groups.get(key)!;
+    // Preferir o nome com acento/caractere especial (geralmente mais letras ou tem acento)
+    if (p.artilheiro_guess.length > g.canonicalName.length || /[àáâãäéêëíîïóôõöúûü]/i.test(p.artilheiro_guess)) {
+      g.canonicalName = p.artilheiro_guess;
+    }
+    g.voters.push(p);
+  });
+
+  // Buscar foto de cada jogador único (com timeout interno de 2s)
+  if (groups.size > 0) {
+    await Promise.allSettled(
+      [...groups.entries()].map(async ([key, group]) => {
+        group.playerImg = await fetchPlayerImage(group.canonicalName);
+      })
     );
-    results.forEach((r) => {
-      if (r.status === 'fulfilled') playerImages[r.value.name] = r.value.img;
-    });
   }
 
-  // 4. Buscar todos os palpites
+  // Ordenar grupos por nº de votos (mais votado primeiro)
+  const sortedGroups = [...groups.values()].sort((a, b) => b.voters.length - a.voters.length);
+
+  const profilesWithoutGuess = allProfiles.filter(p => !p.artilheiro_guess);
+
+  // Buscar palpites dos jogos
   const { data: predictionsData } = await supabase
     .from('predictions')
-    .select(`
-      id,
-      match_id,
-      user_id,
-      home_score,
-      away_score,
-      points,
-      profiles (
-        name
-      )
-    `);
+    .select(`id, match_id, user_id, home_score, away_score, points, profiles ( name )`);
 
   const rawPredictions = (predictionsData || []) as unknown as RawPrediction[];
+  const predictions = rawPredictions.map(p => ({
+    id: p.id,
+    match_id: p.match_id,
+    user_id: p.user_id,
+    home_score: p.home_score,
+    away_score: p.away_score,
+    points: p.points,
+    user_name: p.profiles?.name || 'Participante',
+  }));
 
-  // 4. Mapear palpites — todos visíveis para todos
-  const predictions = rawPredictions
-    .map((p) => ({
-      id: p.id,
-      match_id: p.match_id,
-      user_id: p.user_id,
-      home_score: p.home_score,
-      away_score: p.away_score,
-      points: p.points,
-      user_name: p.profiles?.name || 'Participante'
-    }));
-
-  // 5. Buscar contagem total de palpites por jogo usando a RPC get_predictions_count
   const predictionsCount: Record<string, number> = {};
-  
   try {
     const { data: countsData, error: countsError } = await supabase.rpc('get_predictions_count');
     if (!countsError && countsData) {
-      countsData.forEach((row: any) => {
-        predictionsCount[row.match_id] = Number(row.count);
-      });
+      countsData.forEach((row: any) => { predictionsCount[row.match_id] = Number(row.count); });
     }
-  } catch (err) {
-    console.error('Erro ao chamar RPC get_predictions_count:', err);
-  }
-
-  // Preencher contagens restantes com fallback seguro
-  matches.forEach((m) => {
+  } catch {}
+  matches.forEach(m => {
     if (predictionsCount[m.id] === undefined) {
-      const fallbackCount = predictions.filter((p) => p.match_id === m.id).length;
-      predictionsCount[m.id] = fallbackCount;
+      predictionsCount[m.id] = predictions.filter(p => p.match_id === m.id).length;
     }
   });
 
@@ -114,63 +125,112 @@ export default async function TodosPalpitesPage() {
         </p>
       </div>
 
-      {/* Seção: Palpites de Artilheiro */}
-      {allProfiles.some((p) => p.artilheiro_guess) && (
-        <div className="mb-10">
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border-custom/60">
+      {/* Seção: Artilheiro — cards por jogador */}
+      {sortedGroups.length > 0 && (
+        <div className="mb-12">
+          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border-custom/60">
             <span className="text-lg">⚽</span>
             <h2 className="text-sm font-black text-primary uppercase tracking-wider">Palpites de Artilheiro</h2>
-            <span className="text-[10px] font-black text-secondary">+5 pts para quem acertar</span>
+            <span className="text-[10px] font-black text-secondary bg-muted border border-border-custom px-2 py-0.5 rounded-full">+5 pts para quem acertar</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {allProfiles.map((p) => {
-              const bgColors = ['bg-red-500','bg-blue-500','bg-emerald-500','bg-amber-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-cyan-500'];
-              const color = bgColors[(p.name.charCodeAt(0) || 0) % bgColors.length];
-              const acertou = (p.artilheiro_points ?? 0) > 0;
-              const isSelf = p.id === user?.id;
-              const playerImg = p.artilheiro_guess ? playerImages[p.artilheiro_guess] : null;
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {sortedGroups.map(group => {
+              const acertou = group.voters.some(v => (v.artilheiro_points ?? 0) > 0);
               return (
                 <div
-                  key={p.id}
-                  className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
-                    acertou ? 'bg-amber-500/5 border-amber-500/20' :
-                    isSelf  ? 'bg-accent-custom/5 border-accent-custom/20' :
-                              'bg-card border-border-custom'
+                  key={group.canonicalName}
+                  className={`rounded-2xl border overflow-hidden flex flex-col transition-all ${
+                    acertou
+                      ? 'border-amber-500/40 bg-amber-500/5 shadow-lg shadow-amber-500/10'
+                      : 'border-border-custom bg-card'
                   }`}
                 >
-                  {/* Avatar do participante */}
-                  {p.avatar_url ? (
-                    <img src={p.avatar_url} alt={p.name} className="w-8 h-8 rounded-full object-cover shrink-0 border border-border-custom" />
-                  ) : (
-                    <span className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-black text-white shrink-0 ${color}`}>
-                      {p.name.substring(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                  {/* Info */}
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[11px] font-black truncate ${isSelf ? 'text-accent-custom' : 'text-primary'}`}>
-                      {p.name}{isSelf && <span className="ml-1 text-[9px] opacity-70">(você)</span>}
-                    </p>
-                    {p.artilheiro_guess ? (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {playerImg && (
-                          <img src={playerImg} alt={p.artilheiro_guess} className="w-6 h-6 rounded-full object-cover shrink-0 border border-border-custom bg-muted" />
-                        )}
-                        <p className={`text-xs font-bold truncate ${acertou ? 'text-amber-500' : 'text-secondary'}`}>
-                          {acertou && '🏆 '}{p.artilheiro_guess}
-                        </p>
-                      </div>
+                  {/* Foto do jogador */}
+                  <div className="relative w-full aspect-square bg-muted/40 overflow-hidden">
+                    {group.playerImg ? (
+                      <img
+                        src={group.playerImg}
+                        alt={group.canonicalName}
+                        className="w-full h-full object-cover object-top"
+                      />
                     ) : (
-                      <p className="text-[10px] text-secondary italic">sem palpite</p>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-5xl font-black text-secondary/20 select-none">
+                          {group.canonicalName.substring(0, 1).toUpperCase()}
+                        </span>
+                      </div>
                     )}
+
+                    {/* Badge de votos */}
+                    <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {group.voters.length} {group.voters.length === 1 ? 'voto' : 'votos'}
+                    </div>
+
+                    {/* Badge de campeão */}
+                    {acertou && (
+                      <div className="absolute top-2 left-2 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                        🏆 Acertou!
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nome do jogador */}
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <p className={`text-sm font-black truncate ${acertou ? 'text-amber-500' : 'text-primary'}`}>
+                      {group.canonicalName}
+                    </p>
+                  </div>
+
+                  {/* Seta divisória */}
+                  <div className="flex items-center gap-1.5 px-3 pb-1.5">
+                    <div className="h-px flex-1 bg-border-custom/40" />
+                    <span className="text-secondary text-[10px] font-black">▼</span>
+                    <div className="h-px flex-1 bg-border-custom/40" />
+                  </div>
+
+                  {/* Quem votou */}
+                  <div className="px-3 pb-3 flex flex-col gap-1.5">
+                    {group.voters.map(v => {
+                      const isSelf = v.id === user?.id;
+                      return (
+                        <div key={v.id} className="flex items-center gap-1.5 min-w-0">
+                          {v.avatar_url ? (
+                            <img
+                              src={v.avatar_url}
+                              alt={v.name}
+                              className="w-5 h-5 rounded-full object-cover shrink-0 border border-border-custom"
+                            />
+                          ) : (
+                            <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white shrink-0 ${avatarColor(v.name)}`}>
+                              {v.name.substring(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                          <span className={`text-[11px] font-bold truncate ${isSelf ? 'text-accent-custom' : 'text-secondary'}`}>
+                            {v.name}{isSelf && <span className="ml-0.5 opacity-70 text-[9px]"> (você)</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Quem ainda não palpitou */}
+          {profilesWithoutGuess.length > 0 && (
+            <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-[10px] text-secondary font-black uppercase tracking-wider">Sem palpite:</span>
+              {profilesWithoutGuess.map(p => (
+                <span key={p.id} className="text-[11px] text-secondary/50 font-bold">{p.name}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
+      {/* Palpites dos jogos */}
       {matches.length === 0 ? (
         <div className="bg-card border border-border-custom rounded-2xl p-8 text-center text-secondary">
           Nenhum jogo cadastrado.
