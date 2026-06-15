@@ -139,7 +139,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, name, avatar_url');
+      .select('id, name, avatar_url, artilheiro_guess, artilheiro_points');
 
     if (profilesError || !profiles) {
       console.error('Erro ao buscar perfis:', profilesError);
@@ -162,7 +162,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
 
     // Inicializar mapa com todos os usuários
     profiles.forEach((p) => {
-      rankingMap.set(p.id, { total_points: 0, predictions_count: 0, acertos_count: 0 });
+      rankingMap.set(p.id, { total_points: p.artilheiro_points || 0, predictions_count: 0, acertos_count: 0 });
     });
 
     // Somar pontos das predictions pontuadas
@@ -185,6 +185,8 @@ export async function getRanking(): Promise<RankingEntry[]> {
         user_id: p.id,
         name: p.name,
         avatar_url: p.avatar_url ?? null,
+        artilheiro_guess: p.artilheiro_guess ?? null,
+        artilheiro_points: p.artilheiro_points || 0,
         total_points: stats.total_points,
         predictions_count: stats.predictions_count,
         acertos_count: stats.acertos_count,
@@ -385,6 +387,75 @@ export async function updateNickname(newName: string) {
     revalidatePath('/');
     revalidatePath('/todos');
     return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
+ * Salva o palpite do artilheiro do torneio para o usuário logado.
+ */
+export async function saveArtilheiroGuess(playerName: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const trimmed = playerName.trim();
+    if (!trimmed) return { success: false, error: 'Digite o nome do jogador.' };
+    if (trimmed.length > 60) return { success: false, error: 'Nome muito longo.' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ artilheiro_guess: trimmed })
+      .eq('id', user.id);
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath('/perfil');
+    revalidatePath('/todos');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
+ * Admin confirma o artilheiro real e distribui 5 pts para quem acertou.
+ */
+export async function confirmArtilheiro(playerName: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) return { success: false, error: 'Acesso negado.' };
+
+    const admin = createAdminClient();
+    const normalizedName = playerName.trim().toLowerCase();
+
+    // Reset todos os pontos de artilheiro
+    await admin.from('profiles').update({ artilheiro_points: 0 }).not('id', 'is', null);
+
+    // Busca todos os palpites de artilheiro
+    const { data: guesses } = await admin
+      .from('profiles')
+      .select('id, artilheiro_guess')
+      .not('artilheiro_guess', 'is', null);
+
+    const winnerIds = (guesses || [])
+      .filter((p) => p.artilheiro_guess?.trim().toLowerCase() === normalizedName)
+      .map((p) => p.id);
+
+    if (winnerIds.length > 0) {
+      await admin.from('profiles').update({ artilheiro_points: 5 }).in('id', winnerIds);
+    }
+
+    revalidatePath('/');
+    revalidatePath('/perfil');
+    revalidatePath('/todos');
+    revalidatePath('/admin');
+    return { success: true, winners: winnerIds.length };
   } catch (error: any) {
     return { success: false, error: error.message || 'Erro inesperado.' };
   }

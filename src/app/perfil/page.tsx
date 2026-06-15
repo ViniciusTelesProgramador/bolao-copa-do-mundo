@@ -11,6 +11,7 @@ import { formatMatchDateTime } from '@/lib/date';
 import EditNicknameForm from '@/components/ui/EditNicknameForm';
 import ShareButton from '@/components/ui/ShareButton';
 import AvatarUpload from '@/components/ui/AvatarUpload';
+import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ export default async function PerfilPage() {
   // 2. Buscar perfil correspondente para pegar o nome
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, avatar_url')
+    .select('name, avatar_url, artilheiro_guess, artilheiro_points')
     .eq('id', user.id)
     .single();
 
@@ -186,6 +187,12 @@ export default async function PerfilPage() {
           </div>
         </div>
       </div>
+
+      {/* Artilheiro */}
+      <ArtilheiroGuessForm
+        currentGuess={profile?.artilheiro_guess ?? null}
+        artilheiroPoints={profile?.artilheiro_points ?? 0}
+      />
 
       {predictionsList.length === 0 ? (
         /* Empty State Customizado */

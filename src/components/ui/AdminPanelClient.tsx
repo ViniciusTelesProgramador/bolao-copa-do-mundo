@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
 import { saveMatchResult, shiftAllMatchTimes } from '@/app/actions';
-import { Plus, Check, Spinner, Trash, Calendar, Clock, Users } from '@phosphor-icons/react';
+import { Plus, Check, Spinner, Trash, Calendar, Clock, Users, SoccerBall, Trophy } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
 import { formatMatchDateTime, parseLocalDateToUTC } from '@/lib/date';
-import { deleteUser } from '@/app/actions';
+import { deleteUser, confirmArtilheiro } from '@/app/actions';
 
 interface AdminUser {
   id: string;
   name: string;
   predictionCount: number;
+  artilheiroGuess: string | null;
+  artilheiroPoints: number;
 }
 
 interface AdminPanelClientProps {
@@ -50,6 +52,31 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
 
   // Estado de deleção de usuário
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+
+  // Estado do artilheiro
+  const [artilheiroInput, setArtilheiroInput] = useState('');
+  const [isConfirmingArtilheiro, setIsConfirmingArtilheiro] = useState(false);
+  const [artilheiroResult, setArtilheiroResult] = useState<{ winners: number; name: string } | null>(null);
+
+  const handleConfirmArtilheiro = async () => {
+    if (!artilheiroInput.trim()) { showToast('Digite o nome do artilheiro.', 'error'); return; }
+    if (!confirm(`Confirmar "${artilheiroInput.trim()}" como artilheiro da Copa? Isso distribuirá 5 pts para quem acertou.`)) return;
+    setIsConfirmingArtilheiro(true);
+    try {
+      const res = await confirmArtilheiro(artilheiroInput);
+      if (res.success) {
+        setArtilheiroResult({ winners: res.winners ?? 0, name: artilheiroInput.trim() });
+        showToast(`Artilheiro confirmado! ${res.winners} participante(s) acertou.`, 'success');
+        router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao confirmar.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsConfirmingArtilheiro(false);
+    }
+  };
 
   const handleDeleteUser = async (user: AdminUser) => {
     if (!confirm(`Excluir "${user.name}"? Isso apagará também todos os ${user.predictionCount} palpites dele. Esta ação não pode ser desfeita.`)) return;
@@ -460,6 +487,85 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
             })}
           </div>
         )}
+      </div>
+    </div>
+
+    {/* Seção Artilheiro */}
+    <div className="bg-card border border-border-custom rounded-2xl p-6 shadow-xl">
+      <h2 className="text-base font-extrabold text-primary mb-1 uppercase tracking-wider flex items-center gap-2 select-none">
+        <SoccerBall size={18} weight="fill" className="text-accent-custom" />
+        Artilheiro da Copa
+      </h2>
+      <p className="text-xs text-secondary mb-5 font-medium">
+        Veja os palpites de artilheiro dos participantes e confirme o vencedor ao final do torneio para distribuir os 5 pts extras.
+      </p>
+
+      {/* Resumo dos palpites */}
+      {(() => {
+        const guessCount: Record<string, number> = {};
+        users.forEach((u) => {
+          if (u.artilheiroGuess) {
+            const key = u.artilheiroGuess.trim().toLowerCase();
+            guessCount[key] = (guessCount[key] || 0) + 1;
+          }
+        });
+        const sorted = Object.entries(guessCount).sort((a, b) => b[1] - a[1]);
+        const noGuess = users.filter((u) => !u.artilheiroGuess).length;
+
+        return (
+          <div className="mb-5 space-y-2">
+            <p className="text-[10px] font-black text-secondary uppercase tracking-wider mb-2">Palpites recebidos</p>
+            {sorted.length === 0 ? (
+              <p className="text-xs text-secondary italic">Nenhum palpite ainda.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {sorted.map(([name, count]) => {
+                  const hasWon = users.some((u) => u.artilheiroGuess?.trim().toLowerCase() === name && u.artilheiroPoints > 0);
+                  return (
+                    <span key={name} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${hasWon ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-muted text-primary border-border-custom'}`}>
+                      {hasWon && <Trophy size={11} weight="fill" className="text-amber-500" />}
+                      {name.charAt(0).toUpperCase() + name.slice(1)}
+                      <span className="text-[10px] opacity-60">×{count}</span>
+                    </span>
+                  );
+                })}
+                {noGuess > 0 && (
+                  <span className="px-3 py-1.5 rounded-xl text-xs font-bold border bg-muted/40 text-secondary border-border-custom/50 italic">
+                    {noGuess} sem palpite
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Resultado confirmado */}
+      {artilheiroResult && (
+        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs font-bold text-amber-500">
+          ✓ Artilheiro confirmado: <span className="capitalize">{artilheiroResult.name}</span> — {artilheiroResult.winners} acertou(aram) e recebeu(ram) +5 pts.
+        </div>
+      )}
+
+      {/* Input para confirmar */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={artilheiroInput}
+          onChange={(e) => setArtilheiroInput(e.target.value)}
+          placeholder="Nome do artilheiro real..."
+          maxLength={60}
+          className="flex-1 h-11 px-3 bg-base border border-border-custom focus:border-accent-custom text-primary text-sm rounded-xl focus:outline-none font-medium transition-colors"
+          onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmArtilheiro(); }}
+        />
+        <button
+          onClick={handleConfirmArtilheiro}
+          disabled={isConfirmingArtilheiro || !artilheiroInput.trim()}
+          className="h-11 px-5 flex items-center gap-1.5 bg-accent-custom text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl disabled:opacity-40 cursor-pointer transition-all"
+        >
+          {isConfirmingArtilheiro ? <Spinner size={14} className="animate-spin" /> : <Check size={14} weight="bold" />}
+          Confirmar
+        </button>
       </div>
     </div>
 

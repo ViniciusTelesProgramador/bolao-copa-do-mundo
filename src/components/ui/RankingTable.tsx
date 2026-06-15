@@ -141,6 +141,11 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
                               Você
                             </span>
                           )}
+                          {entry.artilheiro_points > 0 && (
+                            <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-full font-black border border-amber-500/20 select-none shrink-0" title="Acertou o artilheiro (+5 pts)">
+                              ⚽+5
+                            </span>
+                          )}
                         </div>
                         <span className={`text-[9px] font-bold sm:hidden mt-0.5 select-none shrink-0 ${
                           entry.aproveitamento >= 70 ? 'text-green-500' :

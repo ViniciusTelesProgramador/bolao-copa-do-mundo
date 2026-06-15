@@ -33,6 +33,8 @@ export interface RankingEntry {
   user_id: string;
   name: string;
   avatar_url: string | null;
+  artilheiro_guess: string | null;
+  artilheiro_points: number;
   total_points: number;
   predictions_count: number;
   acertos_count: number;

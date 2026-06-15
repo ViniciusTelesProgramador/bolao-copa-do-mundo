@@ -16,7 +16,7 @@ export default async function AdminPage() {
 
   const [matchesResult, profilesResult, predictionsResult] = await Promise.all([
     supabase.from('matches').select('*').order('match_time', { ascending: true }),
-    supabase.from('profiles').select('id, name').order('name', { ascending: true }),
+    supabase.from('profiles').select('id, name, artilheiro_guess, artilheiro_points').order('name', { ascending: true }),
     supabase.from('predictions').select('user_id'),
   ]);
 
@@ -27,10 +27,12 @@ export default async function AdminPage() {
     predCounts[p.user_id] = (predCounts[p.user_id] || 0) + 1;
   });
 
-  const users = (profilesResult.data || []).map((p: { id: string; name: string }) => ({
+  const users = (profilesResult.data || []).map((p: { id: string; name: string; artilheiro_guess?: string | null; artilheiro_points?: number }) => ({
     id: p.id,
     name: p.name,
     predictionCount: predCounts[p.id] || 0,
+    artilheiroGuess: p.artilheiro_guess ?? null,
+    artilheiroPoints: p.artilheiro_points ?? 0,
   }));
 
   return (
