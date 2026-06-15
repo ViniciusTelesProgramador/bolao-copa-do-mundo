@@ -12,6 +12,7 @@ import EditNicknameForm from '@/components/ui/EditNicknameForm';
 import ShareButton from '@/components/ui/ShareButton';
 import AvatarUpload from '@/components/ui/AvatarUpload';
 import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
+import ChangePasswordForm from '@/components/ui/ChangePasswordForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,6 +124,7 @@ export default async function PerfilPage() {
                 <p className="text-xs text-secondary font-bold">{user.email}</p>
               )}
               <EditNicknameForm currentName={profile?.name || user.email?.split('@')[0] || ''} />
+              <ChangePasswordForm />
               <div className="flex items-center gap-2 flex-wrap pt-1">
                 {userRankPosition > 0 && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 text-xs font-black uppercase tracking-wider rounded-xl select-none">

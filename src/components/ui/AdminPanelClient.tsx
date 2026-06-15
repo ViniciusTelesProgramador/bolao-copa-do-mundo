@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
 import { saveMatchResult, shiftAllMatchTimes } from '@/app/actions';
-import { Plus, Check, Spinner, Trash, Calendar, Clock, Users, SoccerBall, Trophy } from '@phosphor-icons/react';
+import { Plus, Check, Spinner, Trash, Calendar, Clock, Users, SoccerBall, Trophy, Key } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
 import { formatMatchDateTime, parseLocalDateToUTC } from '@/lib/date';
-import { deleteUser, confirmArtilheiro } from '@/app/actions';
+import { deleteUser, confirmArtilheiro, adminResetPassword } from '@/app/actions';
 
 interface AdminUser {
   id: string;
@@ -53,6 +53,11 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
   // Estado de deleção de usuário
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
+  // Estado de reset de senha
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
   // Estado do artilheiro
   const [artilheiroInput, setArtilheiroInput] = useState('');
   const [isConfirmingArtilheiro, setIsConfirmingArtilheiro] = useState(false);
@@ -75,6 +80,25 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
       showToast(err.message || 'Erro inesperado.', 'error');
     } finally {
       setIsConfirmingArtilheiro(false);
+    }
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    if (!resetPasswordInput.trim()) { showToast('Digite a nova senha.', 'error'); return; }
+    setIsResettingPassword(true);
+    try {
+      const res = await adminResetPassword(userId, resetPasswordInput.trim());
+      if (res.success) {
+        showToast('Senha redefinida com sucesso!', 'success');
+        setResetPasswordUserId(null);
+        setResetPasswordInput('');
+      } else {
+        showToast(res.error || 'Erro ao redefinir senha.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -592,45 +616,91 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
             const avatarClass = avatarColors[colorIdx];
             const isDeleting = deletingUserId === u.id;
 
+            const isResettingThis = resetPasswordUserId === u.id;
             return (
               <div
                 key={u.id}
-                className={`flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
+                className={`rounded-xl border transition-all ${
                   isAdmin
                     ? 'border-accent-custom/30 bg-accent-custom/5'
                     : 'border-border-custom bg-muted/20 hover:border-secondary'
                 }`}
               >
-                {/* Avatar + Info */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-black shrink-0 border select-none ${avatarClass}`}>
-                    {u.name.substring(0, 1).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-bold text-primary truncate">{u.name}</span>
-                      {isAdmin && (
-                        <span className="text-[9px] font-black text-accent-custom uppercase tracking-widest bg-accent-custom/10 px-1.5 py-0.5 rounded-md border border-accent-custom/20 shrink-0">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-secondary font-bold block">
-                      {u.predictionCount} {u.predictionCount === 1 ? 'palpite' : 'palpites'}
+                <div className="flex items-center justify-between gap-3 p-3.5">
+                  {/* Avatar + Info */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-9 h-9 flex items-center justify-center rounded-full text-sm font-black shrink-0 border select-none ${avatarClass}`}>
+                      {u.name.substring(0, 1).toUpperCase()}
                     </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-bold text-primary truncate">{u.name}</span>
+                        {isAdmin && (
+                          <span className="text-[9px] font-black text-accent-custom uppercase tracking-widest bg-accent-custom/10 px-1.5 py-0.5 rounded-md border border-accent-custom/20 shrink-0">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-secondary font-bold block">
+                        {u.predictionCount} {u.predictionCount === 1 ? 'palpite' : 'palpites'}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Ações */}
+                  {!isAdmin && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => {
+                          setResetPasswordUserId(isResettingThis ? null : u.id);
+                          setResetPasswordInput('');
+                        }}
+                        className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer ${
+                          isResettingThis
+                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                            : 'bg-muted hover:bg-amber-500/10 text-secondary hover:text-amber-500 border-border-custom/80 hover:border-amber-500/20'
+                        }`}
+                        title={`Redefinir senha de ${u.name}`}
+                      >
+                        <Key size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        disabled={isDeleting}
+                        className="w-9 h-9 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer disabled:opacity-40"
+                        title={`Excluir ${u.name}`}
+                      >
+                        {isDeleting ? <Spinner size={13} className="animate-spin" /> : <Trash size={14} />}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Botão Excluir */}
-                {!isAdmin && (
-                  <button
-                    onClick={() => handleDeleteUser(u)}
-                    disabled={isDeleting}
-                    className="w-9 h-9 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer disabled:opacity-40"
-                    title={`Excluir ${u.name}`}
-                  >
-                    {isDeleting ? <Spinner size={13} className="animate-spin" /> : <Trash size={14} />}
-                  </button>
+                {/* Formulário de redefinição de senha */}
+                {!isAdmin && isResettingThis && (
+                  <div className="border-t border-amber-500/20 px-3.5 pb-3.5 pt-3 bg-amber-500/5 rounded-b-xl">
+                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-wider mb-2">Nova senha para {u.name}</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={resetPasswordInput}
+                        onChange={(e) => setResetPasswordInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleResetPassword(u.id); if (e.key === 'Escape') { setResetPasswordUserId(null); setResetPasswordInput(''); } }}
+                        placeholder="Mínimo 6 caracteres..."
+                        maxLength={64}
+                        autoFocus
+                        className="flex-1 h-10 px-3 bg-base border border-border-custom focus:border-amber-500 text-primary text-sm rounded-xl focus:outline-none font-medium transition-colors"
+                      />
+                      <button
+                        onClick={() => handleResetPassword(u.id)}
+                        disabled={isResettingPassword || !resetPasswordInput.trim()}
+                        className="h-10 px-4 flex items-center gap-1.5 bg-amber-500 text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl disabled:opacity-40 cursor-pointer transition-all"
+                      >
+                        {isResettingPassword ? <Spinner size={13} className="animate-spin" /> : <Check size={13} weight="bold" />}
+                        Salvar
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );

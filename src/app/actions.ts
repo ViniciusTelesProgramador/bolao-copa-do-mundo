@@ -462,6 +462,50 @@ export async function confirmArtilheiro(playerName: string) {
 }
 
 /**
+ * Admin reseta a senha de qualquer usuário via Admin API.
+ */
+export async function adminResetPassword(userId: string, newPassword: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) return { success: false, error: 'Acesso negado.' };
+
+    if (newPassword.length < 6) return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' };
+
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.updateUserById(userId, { password: newPassword });
+    if (error) return { success: false, error: error.message };
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
+ * Usuário logado altera a própria senha.
+ */
+export async function changePassword(newPassword: string) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    if (newPassword.length < 6) return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' };
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { success: false, error: error.message };
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
  * Salva a URL do avatar do usuário na tabela profiles.
  */
 export async function updateAvatarUrl(avatarUrl: string) {
