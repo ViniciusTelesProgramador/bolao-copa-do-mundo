@@ -155,9 +155,42 @@ export default async function TodosPalpitesPage() {
           />
         )}
 
-        {sortedGroups.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {sortedGroups.map(group => {
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* Easter egg / piada interna do grupo — não é um voto real, só visual */}
+          <div className="rounded-2xl border border-pink-500/30 bg-pink-500/5 overflow-hidden flex flex-col shadow-lg shadow-pink-500/10">
+            <div className="relative w-full aspect-square bg-muted/40 overflow-hidden">
+              <img
+                src="/easter-eggs/leda.png"
+                alt="Leda Henrique"
+                className="w-full h-full object-cover object-top"
+              />
+              <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                1 voto
+              </div>
+              <div className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                😏 Zoeira
+              </div>
+            </div>
+
+            <div className="px-3 pt-2.5 pb-1.5">
+              <p className="text-sm font-black truncate text-pink-400">Leda Henrique</p>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3 pb-1.5">
+              <div className="h-px flex-1 bg-border-custom/40" />
+              <span className="text-secondary text-[10px] font-black">▼</span>
+              <div className="h-px flex-1 bg-border-custom/40" />
+            </div>
+
+            <div className="px-3 pb-3 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white shrink-0 bg-pink-500">A</span>
+                <span className="text-[11px] font-bold truncate text-secondary">Alysson Amorim</span>
+              </div>
+            </div>
+          </div>
+
+          {sortedGroups.map(group => {
               const acertou = group.voters.some(v => (v.artilheiro_points ?? 0) > 0);
               return (
                 <div
@@ -239,7 +272,6 @@ export default async function TodosPalpitesPage() {
               );
             })}
           </div>
-        )}
 
         {/* Quem ainda não palpitou */}
         {profilesWithoutGuess.length > 0 && (
