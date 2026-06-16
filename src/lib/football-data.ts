@@ -150,13 +150,33 @@ export async function searchPlayers(query: string): Promise<PlayerSearchResult[]
   }
 }
 
-// Confirma que um nome de jogador corresponde exatamente a um jogador real
-// de uma das seleções da Copa 2026 (usado como validação de servidor).
+// Verifica se um nome digitado (completo, só sobrenome, ou com inicial — ex: "Mbappé",
+// "K. Havertz", "Cristiano Ronaldo") corresponde ao nome completo retornado pela API.
+function namesMatch(input: string, fullName: string): boolean {
+  const normInput = normalizeName(input);
+  const normFull = normalizeName(fullName);
+  if (normFull === normInput) return true;
+
+  const fullParts = normFull.split(/\s+/);
+  // Nome digitado é uma única palavra que bate com algum "pedaço" do nome completo
+  // (ex: "mbappe" bate com "kylian mbappe", "ronaldo" bate com "cristiano ronaldo")
+  if (fullParts.includes(normInput) && normInput.length >= 3) return true;
+
+  // Compara o último "sobrenome" de cada lado (cobre "k havertz" vs "kai havertz")
+  const inputParts = normInput.split(/\s+/);
+  const lastInput = inputParts[inputParts.length - 1];
+  const lastFull = fullParts[fullParts.length - 1];
+  if (lastInput === lastFull && lastInput.length >= 3) return true;
+
+  return false;
+}
+
+// Confirma que um nome de jogador corresponde a um jogador real (nome completo, sobrenome
+// ou apelido) de uma das seleções da Copa 2026 (usado como validação de servidor).
 export async function validatePlayerName(name: string): Promise<{ valid: boolean; canonicalName?: string }> {
   const results = await searchPlayers(name);
-  const normInput = normalizeName(name);
-  const exact = results.find((r) => normalizeName(r.name) === normInput);
-  if (exact) return { valid: true, canonicalName: exact.name };
+  const match = results.find((r) => namesMatch(name, r.name));
+  if (match) return { valid: true, canonicalName: match.name };
   return { valid: false };
 }
 

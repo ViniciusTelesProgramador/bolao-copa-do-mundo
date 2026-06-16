@@ -87,6 +87,33 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
   const [artilheiroInput, setArtilheiroInput] = useState('');
   const [isConfirmingArtilheiro, setIsConfirmingArtilheiro] = useState(false);
   const [artilheiroResult, setArtilheiroResult] = useState<{ winners: number; name: string } | null>(null);
+  const [isCleaningGuesses, setIsCleaningGuesses] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{ checked: number; cleared: { name: string; guess: string }[] } | null>(null);
+
+  const handleCleanupGuesses = async () => {
+    setIsCleaningGuesses(true);
+    setCleanupResult(null);
+    try {
+      const { cleanupInvalidArtilheiroGuesses } = await import('@/app/actions');
+      const res = await cleanupInvalidArtilheiroGuesses();
+      if (res.success) {
+        setCleanupResult({ checked: res.checked ?? 0, cleared: res.cleared ?? [] });
+        showToast(
+          (res.cleared?.length ?? 0) > 0
+            ? `${res.cleared!.length} palpite(s) inválido(s) removido(s).`
+            : 'Todos os palpites são válidos.',
+          'success'
+        );
+        router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao validar palpites.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsCleaningGuesses(false);
+    }
+  };
 
   const handleConfirmArtilheiro = async () => {
     if (!artilheiroInput.trim()) { showToast('Digite o nome do artilheiro.', 'error'); return; }
@@ -560,13 +587,39 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
 
     {/* Seção Artilheiro */}
     <div className="bg-card border border-border-custom rounded-2xl p-6 shadow-xl">
-      <h2 className="text-base font-extrabold text-primary mb-1 uppercase tracking-wider flex items-center gap-2 select-none">
-        <SoccerBall size={18} weight="fill" className="text-accent-custom" />
-        Artilheiro da Copa
-      </h2>
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+        <h2 className="text-base font-extrabold text-primary uppercase tracking-wider flex items-center gap-2 select-none">
+          <SoccerBall size={18} weight="fill" className="text-accent-custom" />
+          Artilheiro da Copa
+        </h2>
+        <button
+          onClick={handleCleanupGuesses}
+          disabled={isCleaningGuesses}
+          className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-xl border border-border-custom bg-muted text-secondary hover:text-accent-custom hover:border-accent-custom/40 disabled:opacity-50 transition-all cursor-pointer"
+          title="Valida todos os palpites contra jogadores reais das seleções da Copa e remove os inválidos"
+        >
+          <ArrowsClockwise size={13} className={isCleaningGuesses ? 'animate-spin' : ''} />
+          {isCleaningGuesses ? 'Validando...' : 'Validar palpites'}
+        </button>
+      </div>
       <p className="text-xs text-secondary mb-5 font-medium">
         Veja os palpites de artilheiro dos participantes e confirme o vencedor ao final do torneio para distribuir os 5 pts extras.
       </p>
+
+      {cleanupResult && (
+        <div className={`mb-4 p-3 rounded-xl border text-xs font-bold ${cleanupResult.cleared.length > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-accent-custom/5 border-accent-custom/20 text-accent-custom'}`}>
+          {cleanupResult.cleared.length > 0 ? (
+            <>
+              ⚠ {cleanupResult.cleared.length} palpite(s) inválido(s) removido(s) de {cleanupResult.checked} verificado(s):
+              <span className="block mt-1 font-medium opacity-90">
+                {cleanupResult.cleared.map((c) => `${c.name} ("${c.guess}")`).join(', ')}
+              </span>
+            </>
+          ) : (
+            `✓ ${cleanupResult.checked} palpite(s) verificado(s) — todos válidos.`
+          )}
+        </div>
+      )}
 
       {/* Resumo dos palpites */}
       {(() => {

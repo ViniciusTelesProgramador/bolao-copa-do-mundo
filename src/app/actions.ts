@@ -462,6 +462,50 @@ export async function updateNickname(newName: string) {
 }
 
 /**
+ * Admin: revalida todos os palpites de artilheiro já salvos e limpa os que não
+ * correspondem a um jogador real de uma seleção da Copa 2026 (ex: nomes inventados).
+ */
+export async function cleanupInvalidArtilheiroGuesses() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Não autenticado.' };
+
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) return { success: false, error: 'Acesso negado.' };
+
+    const admin = createAdminClient();
+    const { data: profiles, error: fetchError } = await admin
+      .from('profiles')
+      .select('id, name, artilheiro_guess')
+      .not('artilheiro_guess', 'is', null);
+
+    if (fetchError) return { success: false, error: fetchError.message };
+
+    const { validatePlayerName } = await import('@/lib/football-data');
+    const cleared: { name: string; guess: string }[] = [];
+
+    for (const p of profiles || []) {
+      if (!p.artilheiro_guess) continue;
+      const validation = await validatePlayerName(p.artilheiro_guess);
+      if (!validation.valid) {
+        await admin.from('profiles').update({ artilheiro_guess: null }).eq('id', p.id);
+        cleared.push({ name: p.name, guess: p.artilheiro_guess });
+      } else if (validation.canonicalName && validation.canonicalName !== p.artilheiro_guess) {
+        // Normaliza para o nome oficial (acentos/grafia)
+        await admin.from('profiles').update({ artilheiro_guess: validation.canonicalName }).eq('id', p.id);
+      }
+    }
+
+    revalidatePath('/perfil');
+    revalidatePath('/todos');
+    return { success: true, checked: (profiles || []).length, cleared };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Erro inesperado.' };
+  }
+}
+
+/**
  * Busca jogadores reais (das seleções da Copa 2026) para o autocomplete do palpite de artilheiro.
  */
 export async function searchArtilheiroPlayers(query: string) {
