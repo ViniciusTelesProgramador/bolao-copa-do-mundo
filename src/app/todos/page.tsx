@@ -72,6 +72,9 @@ export default async function TodosPalpitesPage() {
     matches: matches.filter((m) => m.stage === stage),
   }));
   const thirdPlaceMatch = matches.find((m) => m.stage === THIRD_PLACE_STAGE) ?? null;
+  // Só mostra o chaveamento quando o mata-mata já tiver confrontos reais definidos
+  const knockoutStarted = [...bracketColumns.flatMap((c) => c.matches), ...(thirdPlaceMatch ? [thirdPlaceMatch] : [])]
+    .some((m) => m.home_team !== 'A confirmar' && m.away_team !== 'A confirmar');
 
   // Agrupar palpites por nome normalizado (une "Mbappé" com "Mbappe", etc.)
   const groups = new Map<string, {
@@ -148,7 +151,9 @@ export default async function TodosPalpitesPage() {
         </p>
       </div>
 
-      <KnockoutBracket columns={bracketColumns} thirdPlace={thirdPlaceMatch} />
+      {knockoutStarted && (
+        <KnockoutBracket columns={bracketColumns} thirdPlace={thirdPlaceMatch} />
+      )}
 
       {/* Seção: Artilheiro — palpite + cards por jogador */}
       <div className="mb-12">
