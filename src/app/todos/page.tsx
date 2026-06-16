@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
 import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 import KnockoutBracket, { BracketColumn } from '@/components/ui/KnockoutBracket';
+import HeadToHeadClient from '@/components/ui/HeadToHeadClient';
 import { fetchPlayerImage, normalizeName } from '@/lib/football-data';
 import { Match } from '@/types';
 
@@ -313,6 +314,15 @@ export default async function TodosPalpitesPage() {
           allProfiles={allProfiles}
         />
       )}
+
+      <div className="mt-12">
+        <HeadToHeadClient
+          profiles={allProfiles}
+          matches={matches}
+          predictions={predictions}
+          currentUserId={user?.id || null}
+        />
+      </div>
     </div>
   );
 }
