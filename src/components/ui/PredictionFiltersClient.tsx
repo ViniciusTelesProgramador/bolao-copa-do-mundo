@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import FlagTeam from './FlagTeam';
 import PointsBadge from './PointsBadge';
 import { Calendar } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/date';
+import { fireConfetti } from '@/lib/confetti';
+
+const CELEBRATED_KEY = 'celebratedExactHits';
 
 type StatusFilter = 'todos' | 'aguardando' | 'acertos' | 'erros';
 type TipoFilter = 'todos' | 'exato' | 'saldo' | 'vencedor' | 'erro';
@@ -93,6 +96,25 @@ export default function PredictionFiltersClient({ predictions }: PredictionFilte
     setStatus(s);
     if (s === 'aguardando') setTipo('todos');
   };
+
+  // Confete ao detectar um placar exato (3 pts) ainda não celebrado nesta máquina
+  useEffect(() => {
+    const exactHits = predictions.filter((p) => p.points === 3);
+    if (exactHits.length === 0) return;
+
+    let celebrated: string[] = [];
+    try {
+      celebrated = JSON.parse(localStorage.getItem(CELEBRATED_KEY) || '[]');
+    } catch {}
+
+    const newHits = exactHits.filter((p) => !celebrated.includes(p.id));
+    if (newHits.length > 0) {
+      fireConfetti();
+      try {
+        localStorage.setItem(CELEBRATED_KEY, JSON.stringify([...celebrated, ...newHits.map((p) => p.id)]));
+      } catch {}
+    }
+  }, [predictions]);
 
   return (
     <div>
