@@ -1,6 +1,7 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
+import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 import { fetchPlayerImage, normalizeName } from '@/lib/football-data';
 import { Match } from '@/types';
 
@@ -49,6 +50,17 @@ export default async function TodosPalpitesPage() {
     .select('id, name, avatar_url, artilheiro_guess, artilheiro_points')
     .order('name', { ascending: true });
   const allProfiles = (profilesData || []) as Profile[];
+
+  // Prazo do palpite de artilheiro (fixo 72h a partir de 15/06/2026, ou ARTILHEIRO_DEADLINE env var)
+  const deadlineStr = process.env.ARTILHEIRO_DEADLINE || '2026-06-18T23:59:59-03:00';
+  const artilheiroDeadline = new Date(deadlineStr);
+  const artilheiroLocked = new Date() > artilheiroDeadline;
+  const artilheiroDeadlineLabel = artilheiroDeadline.toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Fortaleza',
+  });
+  const myProfile = allProfiles.find((p) => p.id === user?.id);
 
   // Agrupar palpites por nome normalizado (une "Mbappé" com "Mbappe", etc.)
   const groups = new Map<string, {
@@ -125,15 +137,25 @@ export default async function TodosPalpitesPage() {
         </p>
       </div>
 
-      {/* Seção: Artilheiro — cards por jogador */}
-      {sortedGroups.length > 0 && (
-        <div className="mb-12">
-          <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border-custom/60">
-            <span className="text-lg">⚽</span>
-            <h2 className="text-sm font-black text-primary uppercase tracking-wider">Palpites de Artilheiro</h2>
-            <span className="text-[10px] font-black text-secondary bg-muted border border-border-custom px-2 py-0.5 rounded-full">+5 pts para quem acertar</span>
-          </div>
+      {/* Seção: Artilheiro — palpite + cards por jogador */}
+      <div className="mb-12">
+        <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border-custom/60">
+          <span className="text-lg">⚽</span>
+          <h2 className="text-sm font-black text-primary uppercase tracking-wider">Palpites de Artilheiro</h2>
+          <span className="text-[10px] font-black text-secondary bg-muted border border-border-custom px-2 py-0.5 rounded-full">+5 pts para quem acertar</span>
+        </div>
 
+        {user && (
+          <ArtilheiroGuessForm
+            currentGuess={myProfile?.artilheiro_guess ?? null}
+            artilheiroPoints={myProfile?.artilheiro_points ?? 0}
+            isLocked={artilheiroLocked}
+            deadlineLabel={artilheiroDeadlineLabel}
+            deadline={deadlineStr}
+          />
+        )}
+
+        {sortedGroups.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {sortedGroups.map(group => {
               const acertou = group.voters.some(v => (v.artilheiro_points ?? 0) > 0);
@@ -217,18 +239,18 @@ export default async function TodosPalpitesPage() {
               );
             })}
           </div>
+        )}
 
-          {/* Quem ainda não palpitou */}
-          {profilesWithoutGuess.length > 0 && (
-            <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-[10px] text-secondary font-black uppercase tracking-wider">Sem palpite:</span>
-              {profilesWithoutGuess.map(p => (
-                <span key={p.id} className="text-[11px] text-secondary/50 font-bold">{p.name}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        {/* Quem ainda não palpitou */}
+        {profilesWithoutGuess.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-[10px] text-secondary font-black uppercase tracking-wider">Sem palpite:</span>
+            {profilesWithoutGuess.map(p => (
+              <span key={p.id} className="text-[11px] text-secondary/50 font-bold">{p.name}</span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Palpites dos jogos */}
       {matches.length === 0 ? (

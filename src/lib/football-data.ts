@@ -121,7 +121,43 @@ export interface PlayerSearchResult {
   thumb: string | null;
 }
 
+// Bloqueio manual: jogadores reais que existem no banco do TheSportsDB mas que sabidamente
+// NÃO disputam a Copa 2026 (aposentados, presos, etc). Adicione novos casos aqui conforme surgirem.
+const BLOCKED_PLAYER_NAMES = new Set(['robinho'].map(normalizeName));
+
+// Referência para cálculo de idade (início da Copa 2026)
+const WORLD_CUP_REFERENCE_DATE = new Date('2026-06-11');
+// Limite generoso: serve só para descartar lendas claramente aposentadas (ex: Ronaldinho, Kaká).
+// Não pode ser muito baixo, pois jogadores em atividade real (ex: Cristiano Ronaldo, 41 anos
+// na Copa 2026) têm idade parecida com a de aposentados — por isso casos específicos como
+// "Robinho" vão na lista de bloqueio manual acima, não no corte de idade.
+const MAX_PLAYER_AGE = 44;
+
+function isLikelyActiveIn2026(player: any): boolean {
+  const name = normalizeName(player.strPlayer || '');
+  if (BLOCKED_PLAYER_NAMES.has(name)) return false;
+
+  // Status explícito de aposentado (quando a API informa)
+  if (typeof player.strStatus === 'string' && /retired|aposentad/i.test(player.strStatus)) return false;
+
+  // Filtro de idade: descarta jogadores muito acima da idade normal de atividade
+  if (player.dateBorn) {
+    const birth = new Date(player.dateBorn);
+    if (!isNaN(birth.getTime())) {
+      let age = WORLD_CUP_REFERENCE_DATE.getFullYear() - birth.getFullYear();
+      const beforeBirthday =
+        WORLD_CUP_REFERENCE_DATE.getMonth() < birth.getMonth() ||
+        (WORLD_CUP_REFERENCE_DATE.getMonth() === birth.getMonth() && WORLD_CUP_REFERENCE_DATE.getDate() < birth.getDate());
+      if (beforeBirthday) age--;
+      if (age > MAX_PLAYER_AGE) return false;
+    }
+  }
+
+  return true;
+}
+
 // Busca jogadores reais via TheSportsDB, filtrando apenas seleções da Copa 2026
+// e descartando jogadores aposentados/muito velhos/bloqueados manualmente.
 export async function searchPlayers(query: string): Promise<PlayerSearchResult[]> {
   const trimmed = query.trim();
   if (trimmed.length < 3) return [];
@@ -137,7 +173,7 @@ export async function searchPlayers(query: string): Promise<PlayerSearchResult[]
     const json = await res.json();
     const players = (json.player || []) as any[];
     return players
-      .filter((p) => p.strSport === 'Soccer' && p.strNationality && isQualifiedNation(p.strNationality))
+      .filter((p) => p.strSport === 'Soccer' && p.strNationality && isQualifiedNation(p.strNationality) && isLikelyActiveIn2026(p))
       .slice(0, 8)
       .map((p) => ({
         name: p.strPlayer as string,

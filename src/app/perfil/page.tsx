@@ -7,7 +7,6 @@ import { Flame } from '@phosphor-icons/react/dist/ssr';
 import EditNicknameForm from '@/components/ui/EditNicknameForm';
 import ShareButton from '@/components/ui/ShareButton';
 import AvatarUpload from '@/components/ui/AvatarUpload';
-import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 import ChangePasswordForm from '@/components/ui/ChangePasswordForm';
 import PredictionFiltersClient from '@/components/ui/PredictionFiltersClient';
 import Link from 'next/link';
@@ -30,17 +29,8 @@ export default async function PerfilPage() {
     .eq('id', user.id)
     .single();
 
-  // 3. Buscar ranking e calcular prazo do artilheiro (fixo 72h a partir de 15/06/2026)
+  // 3. Buscar ranking
   const ranking = await getRanking();
-
-  const deadlineStr = process.env.ARTILHEIRO_DEADLINE || '2026-06-18T23:59:59-03:00';
-  const artilheiroDeadline = new Date(deadlineStr);
-  const artilheiroLocked = new Date() > artilheiroDeadline;
-  const artilheiroDeadlineLabel = artilheiroDeadline.toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-    timeZone: 'America/Fortaleza',
-  });
   const userRankPosition = ranking.findIndex((r) => r.user_id === user.id) + 1;
 
   // 4. Buscar palpites do usuário junto com os dados dos jogos
@@ -188,14 +178,15 @@ export default async function PerfilPage() {
         </div>
       </div>
 
-      {/* Artilheiro */}
-      <ArtilheiroGuessForm
-        currentGuess={profile?.artilheiro_guess ?? null}
-        artilheiroPoints={profile?.artilheiro_points ?? 0}
-        isLocked={artilheiroLocked}
-        deadlineLabel={artilheiroDeadlineLabel}
-        deadline={deadlineStr}
-      />
+      <Link
+        href="/todos"
+        className="flex items-center justify-between gap-3 bg-card border border-border-custom hover:border-accent-custom/40 rounded-2xl px-5 py-3.5 mb-8 shadow-md transition-colors group"
+      >
+        <span className="flex items-center gap-2 text-xs font-bold text-secondary group-hover:text-primary">
+          ⚽ Palpite de artilheiro agora fica na aba <span className="text-accent-custom font-black uppercase tracking-wider">Todos os Palpites</span>
+        </span>
+        <span className="text-accent-custom text-xs font-black shrink-0">Ir →</span>
+      </Link>
 
       {predictionsList.length === 0 ? (
         <div className="text-center py-12 px-6 bg-card border border-border-custom rounded-2xl max-w-md mx-auto shadow-lg space-y-4 animate-fadeIn">
