@@ -56,6 +56,20 @@ export function isSameDayInSaoPaulo(date1Input: Date | string, date2Input: Date 
 }
 
 /**
+ * Retorna a chave do dia civil (YYYY-MM-DD) no fuso de Brasília, usada para
+ * agrupar partidas por "rodada" (dia de jogos) no ranking por rodada.
+ */
+export function getDateKeySaoPaulo(dateInput: Date | string): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/**
  * Recebe uma string obtida de um input do tipo 'datetime-local' (ex: "2026-06-11T14:00")
  * e a interpreta estritamente como sendo do fuso de Brasília ('America/Sao_Paulo'),
  * convertendo-a para uma string ISO UTC de forma independente do fuso horário do navegador do admin.

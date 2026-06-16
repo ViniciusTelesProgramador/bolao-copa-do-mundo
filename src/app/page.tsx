@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getRanking } from '@/app/actions';
 import MatchCard from '@/components/ui/MatchCard';
 import RankingTable from '@/components/ui/RankingTable';
+import RoundRankingClient, { RoundData } from '@/components/ui/RoundRankingClient';
 import { Match, Prediction } from '@/types';
 import Link from 'next/link';
-import { isSameDayInSaoPaulo } from '@/lib/date';
+import { isSameDayInSaoPaulo, getDateKeySaoPaulo } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,46 @@ export default async function HomePage() {
   userPredictions.forEach((p) => {
     predictionsMap.set(p.match_id, p);
   });
+
+  // 3.1 Montar ranking por rodada (agrupado por dia civil de Brasília)
+  const { data: scoredPredictionsData } = await supabase
+    .from('predictions')
+    .select('user_id, points, match:matches ( match_time )')
+    .not('points', 'is', null);
+
+  const profileByUserId = new Map(ranking.map((r) => [r.user_id, r]));
+  const roundsMap = new Map<string, Map<string, { points: number; acertos: number; predictions_count: number }>>();
+
+  (scoredPredictionsData || []).forEach((pred: any) => {
+    const matchTime = pred.match?.match_time;
+    if (!matchTime) return;
+    const dateKey = getDateKeySaoPaulo(matchTime);
+    if (!roundsMap.has(dateKey)) roundsMap.set(dateKey, new Map());
+    const userMap = roundsMap.get(dateKey)!;
+    const stats = userMap.get(pred.user_id) || { points: 0, acertos: 0, predictions_count: 0 };
+    stats.points += pred.points ?? 0;
+    stats.acertos += (pred.points ?? 0) > 0 ? 1 : 0;
+    stats.predictions_count += 1;
+    userMap.set(pred.user_id, stats);
+  });
+
+  const rounds: RoundData[] = [...roundsMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dateKey, userMap]) => {
+      const [, month, day] = dateKey.split('-');
+      return {
+        dateKey,
+        label: `${day}/${month}`,
+        entries: [...userMap.entries()]
+          .map(([userId, stats]) => ({
+            user_id: userId,
+            name: profileByUserId.get(userId)?.name ?? 'Participante',
+            avatar_url: profileByUserId.get(userId)?.avatar_url ?? null,
+            ...stats,
+          }))
+          .sort((a, b) => b.points - a.points),
+      };
+    });
 
   // Snapshot do Top 3 para o Hero
   const topThree = ranking.slice(0, 3);
@@ -252,6 +293,7 @@ export default async function HomePage() {
         {/* Tabela de Classificação Completa (1 coluna) */}
         <div id="ranking" className="lg:col-span-1 lg:sticky lg:top-24">
           <RankingTable ranking={ranking} currentUserId={user?.id} totalMatches={matches.length} />
+          <RoundRankingClient rounds={rounds} currentUserId={user?.id} />
         </div>
       </div>
     </div>
