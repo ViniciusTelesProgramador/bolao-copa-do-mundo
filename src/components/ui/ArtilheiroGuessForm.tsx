@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { saveArtilheiroGuess } from '@/app/actions';
-import { SoccerBall, PencilSimple, Check, X, Spinner, Trophy, Lock } from '@phosphor-icons/react';
+import { useState, useTransition, useEffect } from 'react';
+import { saveArtilheiroGuess, searchArtilheiroPlayers } from '@/app/actions';
+import type { PlayerSearchResult } from '@/lib/football-data';
+import { SoccerBall, PencilSimple, Check, X, Spinner, Trophy, Lock, MagnifyingGlass } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import ArtilheiroCountdown from './ArtilheiroCountdown';
 
@@ -18,15 +19,51 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, is
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentGuess || '');
+  const [confirmedName, setConfirmedName] = useState<string | null>(currentGuess);
+  const [suggestions, setSuggestions] = useState<PlayerSearchResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Busca jogadores reais (seleções da Copa 2026) com debounce
+  useEffect(() => {
+    if (!editing) return;
+    const trimmed = value.trim();
+    if (trimmed.length < 3 || trimmed === confirmedName) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setIsSearching(true);
+    const timeout = setTimeout(async () => {
+      const results = await searchArtilheiroPlayers(trimmed);
+      setSuggestions(results);
+      setShowSuggestions(true);
+      setIsSearching(false);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [value, editing, confirmedName]);
+
+  const handleSelectSuggestion = (s: PlayerSearchResult) => {
+    setValue(s.name);
+    setConfirmedName(s.name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setError(null);
+  };
+
   const handleSave = () => {
-    if (!value.trim()) { setError('Digite o nome do jogador.'); return; }
-    if (value.trim() === currentGuess) { setEditing(false); return; }
+    const trimmed = value.trim();
+    if (!trimmed) { setError('Digite o nome do jogador.'); return; }
+    if (trimmed === currentGuess) { setEditing(false); return; }
+    if (trimmed !== confirmedName) {
+      setError('Selecione um jogador da lista de sugestões para confirmar.');
+      return;
+    }
     setError(null);
     startTransition(async () => {
-      const result = await saveArtilheiroGuess(value);
+      const result = await saveArtilheiroGuess(trimmed);
       if (result.success) {
         setEditing(false);
         router.refresh();
@@ -38,6 +75,9 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, is
 
   const handleCancel = () => {
     setValue(currentGuess || '');
+    setConfirmedName(currentGuess);
+    setSuggestions([]);
+    setShowSuggestions(false);
     setError(null);
     setEditing(false);
   };
@@ -94,20 +134,70 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, is
       ) : (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              disabled={isPending}
-              maxLength={60}
-              placeholder="Ex: Mbappé, Vini Jr, Haaland..."
-              className="flex-1 h-10 px-3 text-sm font-bold bg-base border border-accent-custom rounded-xl focus:outline-none text-primary disabled:opacity-50"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave();
-                if (e.key === 'Escape') handleCancel();
-              }}
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={value}
+                onChange={(e) => { setValue(e.target.value); setError(null); }}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                disabled={isPending}
+                maxLength={60}
+                placeholder="Digite ao menos 3 letras: Mbappé, Vini Jr..."
+                className="w-full h-10 px-3 text-sm font-bold bg-base border border-accent-custom rounded-xl focus:outline-none text-primary disabled:opacity-50"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (showSuggestions && suggestions.length > 0) handleSelectSuggestion(suggestions[0]);
+                    else handleSave();
+                  }
+                  if (e.key === 'Escape') {
+                    if (showSuggestions) setShowSuggestions(false);
+                    else handleCancel();
+                  }
+                }}
+              />
+
+              {/* Dropdown de sugestões */}
+              {showSuggestions && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-card border border-border-custom rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                  {isSearching && (
+                    <div className="p-3 text-xs text-secondary flex items-center gap-2">
+                      <Spinner size={12} className="animate-spin" /> Buscando jogadores...
+                    </div>
+                  )}
+                  {!isSearching && suggestions.length === 0 && (
+                    <div className="p-3 text-xs text-secondary italic flex items-center gap-2">
+                      <MagnifyingGlass size={12} />
+                      Nenhum jogador encontrado nas seleções da Copa 2026.
+                    </div>
+                  )}
+                  {!isSearching && suggestions.map((s) => (
+                    <button
+                      key={`${s.name}-${s.team}`}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handleSelectSuggestion(s)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-accent-custom/10 text-left transition-colors border-b border-border-custom/30 last:border-b-0 cursor-pointer"
+                    >
+                      {s.thumb ? (
+                        <img src={s.thumb} alt={s.name} className="w-7 h-7 rounded-full object-cover shrink-0 border border-border-custom" />
+                      ) : (
+                        <span className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-black text-secondary shrink-0 border border-border-custom">
+                          {s.name.charAt(0)}
+                        </span>
+                      )}
+                      <span className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-primary truncate">{s.name}</span>
+                        <span className="text-[10px] text-secondary truncate">
+                          {s.nationality}{s.team ? ` • ${s.team}` : ''}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               onClick={handleSave}
               disabled={isPending || !value.trim()}
@@ -123,6 +213,11 @@ export default function ArtilheiroGuessForm({ currentGuess, artilheiroPoints, is
               <X size={14} weight="bold" />
             </button>
           </div>
+          {!error && (
+            <p className="text-[10px] text-secondary">
+              Selecione um jogador da lista para confirmar o palpite.
+            </p>
+          )}
           {error && <p className="text-[11px] text-red-500 font-bold">{error}</p>}
         </div>
       )}

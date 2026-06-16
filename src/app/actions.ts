@@ -462,6 +462,14 @@ export async function updateNickname(newName: string) {
 }
 
 /**
+ * Busca jogadores reais (das seleções da Copa 2026) para o autocomplete do palpite de artilheiro.
+ */
+export async function searchArtilheiroPlayers(query: string) {
+  const { searchPlayers } = await import('@/lib/football-data');
+  return searchPlayers(query);
+}
+
+/**
  * Salva o palpite do artilheiro do torneio para o usuário logado.
  */
 export async function saveArtilheiroGuess(playerName: string) {
@@ -480,9 +488,20 @@ export async function saveArtilheiroGuess(playerName: string) {
       return { success: false, error: 'Prazo encerrado. Os palpites de artilheiro foram fechados.' };
     }
 
+    // Valida que é um jogador real de uma seleção da Copa 2026 (evita "Caça rato" etc.)
+    const { validatePlayerName } = await import('@/lib/football-data');
+    const validation = await validatePlayerName(trimmed);
+    if (!validation.valid) {
+      return {
+        success: false,
+        error: 'Jogador não encontrado entre as seleções da Copa do Mundo 2026. Selecione um nome da lista de sugestões.',
+      };
+    }
+    const finalName = validation.canonicalName!;
+
     const { error } = await supabase
       .from('profiles')
-      .update({ artilheiro_guess: trimmed })
+      .update({ artilheiro_guess: finalName })
       .eq('id', user.id);
 
     if (error) return { success: false, error: error.message };

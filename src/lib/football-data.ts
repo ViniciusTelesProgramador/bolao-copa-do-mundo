@@ -109,6 +109,57 @@ export function teamsMatch(nameA: string, nameB: string): boolean {
   return getEnglishKey(nameA) === getEnglishKey(nameB);
 }
 
+// Verifica se uma nacionalidade corresponde a uma das 48 seleções da Copa 2026
+export function isQualifiedNation(nationality: string): boolean {
+  return PT_TO_EN_KEY.has(normalizeName(nationality));
+}
+
+export interface PlayerSearchResult {
+  name: string;
+  team: string | null;
+  nationality: string | null;
+  thumb: string | null;
+}
+
+// Busca jogadores reais via TheSportsDB, filtrando apenas seleções da Copa 2026
+export async function searchPlayers(query: string): Promise<PlayerSearchResult[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 3) return [];
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(
+      `https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(trimmed)}`,
+      { signal: controller.signal, next: { revalidate: 0 } }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const players = (json.player || []) as any[];
+    return players
+      .filter((p) => p.strSport === 'Soccer' && p.strNationality && isQualifiedNation(p.strNationality))
+      .slice(0, 8)
+      .map((p) => ({
+        name: p.strPlayer as string,
+        team: (p.strTeam as string) || null,
+        nationality: (p.strNationality as string) || null,
+        thumb: (p.strCutout || p.strThumb || null) as string | null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+// Confirma que um nome de jogador corresponde exatamente a um jogador real
+// de uma das seleções da Copa 2026 (usado como validação de servidor).
+export async function validatePlayerName(name: string): Promise<{ valid: boolean; canonicalName?: string }> {
+  const results = await searchPlayers(name);
+  const normInput = normalizeName(name);
+  const exact = results.find((r) => normalizeName(r.name) === normInput);
+  if (exact) return { valid: true, canonicalName: exact.name };
+  return { valid: false };
+}
+
 export interface FDMatch {
   id: number;
   utcDate: string;
