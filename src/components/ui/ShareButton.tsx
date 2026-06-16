@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ShareNetwork, Spinner } from '@phosphor-icons/react';
+import { ShareNetwork, Spinner, DeviceMobile } from '@phosphor-icons/react';
 import { showToast } from './Toast';
 
 interface ShareButtonProps {
@@ -182,52 +182,205 @@ async function generateCard(props: ShareButtonProps): Promise<Blob> {
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'));
 }
 
+async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
+  const W = 1080, H = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d')!;
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0b1628');
+  bg.addColorStop(1, '#0f2744');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Glows
+  const glow1 = ctx.createRadialGradient(W * 0.85, 220, 0, W * 0.85, 220, 420);
+  glow1.addColorStop(0, '#22c55e22');
+  glow1.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow1;
+  ctx.fillRect(0, 0, W, H);
+
+  const glow2 = ctx.createRadialGradient(W * 0.15, H * 0.78, 0, W * 0.15, H * 0.78, 500);
+  glow2.addColorStop(0, '#f59e0b18');
+  glow2.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow2;
+  ctx.fillRect(0, 0, W, H);
+
+  // Top accent bar
+  const bar = ctx.createLinearGradient(0, 0, W, 0);
+  bar.addColorStop(0, '#22c55e');
+  bar.addColorStop(1, '#16a34a');
+  ctx.fillStyle = bar;
+  ctx.fillRect(0, 0, W, 10);
+
+  ctx.textAlign = 'center';
+
+  // Header label
+  ctx.fillStyle = '#22c55e';
+  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('⚽  BOLÃO COPA 2026', W / 2, 150);
+  ctx.letterSpacing = '0px';
+
+  // Avatar
+  const avatarR = 150;
+  const avatarCX = W / 2;
+  const avatarCY = 420;
+
+  if (props.avatarUrl) {
+    const img = await loadImage(props.avatarUrl);
+    if (img) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(img, avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
+      ctx.restore();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      drawLetterAvatar(ctx, props.name, avatarCX, avatarCY, avatarR);
+    }
+  } else {
+    drawLetterAvatar(ctx, props.name, avatarCX, avatarCY, avatarR);
+  }
+
+  // Name
+  ctx.fillStyle = '#f1f5f9';
+  ctx.font = 'bold 68px system-ui, sans-serif';
+  ctx.fillText(props.name.toUpperCase(), W / 2, avatarCY + avatarR + 90);
+
+  // Position badge
+  if (props.position > 0) {
+    const medals = ['🥇', '🥈', '🥉'];
+    const medal = medals[props.position - 1] ?? '🏅';
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 42px system-ui, sans-serif';
+    ctx.fillText(`${medal}  ${props.position}º lugar no bolão`, W / 2, avatarCY + avatarR + 160);
+  }
+
+  // Stats grid 2x2
+  const aprvColor = props.aproveitamento >= 70 ? '#22c55e' : props.aproveitamento >= 40 ? '#f59e0b' : '#ef4444';
+  const stats = [
+    { label: 'PONTOS',    value: String(props.totalPoints),  color: '#4ade80' },
+    { label: 'ACERTOS',   value: String(props.acertos),      color: '#86efac' },
+    { label: 'APROVEIT.', value: `${props.aproveitamento}%`, color: aprvColor },
+    { label: 'SEQUÊNCIA', value: props.streak > 0 ? `🔥 ${props.streak}` : '—', color: '#fb923c' },
+  ];
+
+  const boxW = 420, boxH = 230, gapX = 28, gapY = 28;
+  const gridW = boxW * 2 + gapX;
+  const gridX0 = (W - gridW) / 2;
+  const gridY0 = avatarCY + avatarR + 260;
+
+  stats.forEach((stat, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const bx = gridX0 + col * (boxW + gapX);
+    const by = gridY0 + row * (boxH + gapY);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.055)';
+    roundRect(ctx, bx, by, boxW, boxH, 22);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, bx, by, boxW, boxH, 22);
+    ctx.stroke();
+
+    ctx.fillStyle = stat.color;
+    ctx.font = 'bold 72px system-ui, sans-serif';
+    ctx.fillText(stat.value, bx + boxW / 2, by + 120);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'bold 24px system-ui, sans-serif';
+    ctx.fillText(stat.label, bx + boxW / 2, by + 175);
+  });
+
+  // Call to action + footer
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.fillText('Cola no bolão e disputa com a gente! 👇', W / 2, H - 160);
+
+  ctx.fillStyle = '#334155';
+  ctx.font = '26px system-ui, sans-serif';
+  ctx.fillText('bolao-copa-do-mundo-tau.vercel.app', W / 2, H - 100);
+
+  ctx.textAlign = 'left';
+
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'));
+}
+
+async function shareBlob(blob: Blob, filename: string, props: ShareButtonProps) {
+  const file = new File([blob], filename, { type: 'image/png' });
+  const medals = ['🥇', '🥈', '🥉'];
+  const medal = medals[props.position - 1] ?? '🏅';
+  const text = `${medal} Estou em ${props.position}º no Bolão Copa 2026!\n⚽ ${props.totalPoints} pts • ${props.acertos} acertos • ${props.aproveitamento}% de aproveitamento`;
+  const url = 'https://bolao-copa-do-mundo-tau.vercel.app';
+
+  if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    await navigator.share({ files: [file], text, url });
+  } else if (navigator.share) {
+    await navigator.share({ text, url });
+  } else {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Imagem salva! Compartilhe onde quiser.', 'success');
+  }
+}
+
 export default function ShareButton(props: ShareButtonProps) {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState<'post' | 'story' | null>(null);
 
-  const handleShare = async () => {
-    setIsGenerating(true);
+  const handleShare = async (format: 'post' | 'story') => {
+    setIsGenerating(format);
     try {
-      const blob = await generateCard(props);
-      const file = new File([blob], 'bolao-copa-2026.png', { type: 'image/png' });
-
-      const medals = ['🥇', '🥈', '🥉'];
-      const medal = medals[props.position - 1] ?? '🏅';
-      const text = `${medal} Estou em ${props.position}º no Bolão Copa 2026!\n⚽ ${props.totalPoints} pts • ${props.acertos} acertos • ${props.aproveitamento}% de aproveitamento`;
-      const url = 'https://bolao-copa-do-mundo-tau.vercel.app';
-
-      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text, url });
-      } else if (navigator.share) {
-        await navigator.share({ text, url });
-      } else {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'bolao-copa-2026.png';
-        a.click();
-        URL.revokeObjectURL(a.href);
-        showToast('Imagem salva! Compartilhe onde quiser.', 'success');
-      }
+      const blob = format === 'story' ? await generateStoryCard(props) : await generateCard(props);
+      await shareBlob(blob, `bolao-copa-2026-${format}.png`, props);
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
         showToast('Não foi possível compartilhar.', 'error');
       }
     } finally {
-      setIsGenerating(false);
+      setIsGenerating(null);
     }
   };
 
   return (
-    <button
-      onClick={handleShare}
-      disabled={isGenerating}
-      className="flex items-center gap-2 px-4 h-9 bg-muted hover:bg-border-custom border border-border-custom text-primary text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-60"
-    >
-      {isGenerating
-        ? <Spinner size={15} className="animate-spin" />
-        : <ShareNetwork size={15} />
-      }
-      {isGenerating ? 'Gerando...' : 'Compartilhar'}
-    </button>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => handleShare('post')}
+        disabled={isGenerating !== null}
+        className="flex items-center gap-2 px-4 h-9 bg-muted hover:bg-border-custom border border-border-custom text-primary text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-60"
+      >
+        {isGenerating === 'post'
+          ? <Spinner size={15} className="animate-spin" />
+          : <ShareNetwork size={15} />
+        }
+        {isGenerating === 'post' ? 'Gerando...' : 'Compartilhar'}
+      </button>
+
+      <button
+        onClick={() => handleShare('story')}
+        disabled={isGenerating !== null}
+        title="Imagem em formato vertical (Stories/Status)"
+        className="flex items-center gap-2 px-3 h-9 bg-muted hover:bg-border-custom border border-border-custom text-primary text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-60"
+      >
+        {isGenerating === 'story'
+          ? <Spinner size={15} className="animate-spin" />
+          : <DeviceMobile size={15} />
+        }
+        {isGenerating === 'story' ? '...' : 'Stories'}
+      </button>
+    </div>
   );
 }
