@@ -167,9 +167,6 @@ export default async function TodosPalpitesPage() {
               <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-0.5 rounded-full">
                 1 voto
               </div>
-              <div className="absolute top-2 left-2 bg-pink-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
-                😏 Zoeira
-              </div>
             </div>
 
             <div className="px-3 pt-2.5 pb-1.5">
