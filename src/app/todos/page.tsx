@@ -2,8 +2,12 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
 import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
+import KnockoutBracket, { BracketColumn } from '@/components/ui/KnockoutBracket';
 import { fetchPlayerImage, normalizeName } from '@/lib/football-data';
 import { Match } from '@/types';
+
+const KNOCKOUT_STAGE_ORDER = ['Fase de 32', 'Oitavas de Final', 'Quartas de Final', 'Semifinal', 'Final'];
+const THIRD_PLACE_STAGE = 'Decisão do 3º Lugar';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +65,13 @@ export default async function TodosPalpitesPage() {
     timeZone: 'America/Fortaleza',
   });
   const myProfile = allProfiles.find((p) => p.id === user?.id);
+
+  // Montar colunas do chaveamento do mata-mata (fases além da Fase de Grupos)
+  const bracketColumns: BracketColumn[] = KNOCKOUT_STAGE_ORDER.map((stage) => ({
+    stage,
+    matches: matches.filter((m) => m.stage === stage),
+  }));
+  const thirdPlaceMatch = matches.find((m) => m.stage === THIRD_PLACE_STAGE) ?? null;
 
   // Agrupar palpites por nome normalizado (une "Mbappé" com "Mbappe", etc.)
   const groups = new Map<string, {
@@ -136,6 +147,8 @@ export default async function TodosPalpitesPage() {
           Acompanhe todos os palpites enviados pelos participantes da Copa.
         </p>
       </div>
+
+      <KnockoutBracket columns={bracketColumns} thirdPlace={thirdPlaceMatch} />
 
       {/* Seção: Artilheiro — palpite + cards por jogador */}
       <div className="mb-12">
