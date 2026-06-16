@@ -9,6 +9,8 @@ import ShareButton from '@/components/ui/ShareButton';
 import AvatarUpload from '@/components/ui/AvatarUpload';
 import ChangePasswordForm from '@/components/ui/ChangePasswordForm';
 import PredictionFiltersClient from '@/components/ui/PredictionFiltersClient';
+import PointsEvolutionChart, { PointsEvolutionEntry } from '@/components/ui/PointsEvolutionChart';
+import Achievements, { AchievementBadge } from '@/components/ui/Achievements';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -89,6 +91,74 @@ export default async function PerfilPage() {
 
   const rankingEntry = ranking.find((r) => r.user_id === user.id);
   const aproveitamento = rankingEntry?.aproveitamento ?? 0;
+
+  // 5. Evolução de pontos (acumulado cronológico, jogo a jogo)
+  let runningTotal = 0;
+  const pointsEvolution: PointsEvolutionEntry[] = scoredByTime.map((p) => {
+    runningTotal += p.points ?? 0;
+    return {
+      label: `${p.match.home_team} x ${p.match.away_team}`,
+      cumulative: runningTotal,
+      gained: p.points ?? 0,
+    };
+  });
+
+  // 6. Conquistas
+  const { count: totalMatchesCount } = await supabase
+    .from('matches')
+    .select('id', { count: 'exact', head: true });
+
+  const artilheiroPoints = profile?.artilheiro_points ?? 0;
+  const badges: AchievementBadge[] = [
+    {
+      icon: '🎯',
+      label: 'Atirador de Elite',
+      description: '3 ou mais placares exatos',
+      unlocked: exactHits >= 3,
+    },
+    {
+      icon: '🔥',
+      label: 'Sequência Imbatível',
+      description: '5 ou mais acertos seguidos',
+      unlocked: maxStreak >= 5,
+    },
+    {
+      icon: '⚽',
+      label: 'Profeta do Artilheiro',
+      description: 'Acertou o artilheiro da Copa',
+      unlocked: artilheiroPoints > 0,
+    },
+    {
+      icon: '👑',
+      label: 'Líder do Bolão',
+      description: 'Está em 1º lugar no ranking',
+      unlocked: userRankPosition === 1,
+    },
+    {
+      icon: '📋',
+      label: 'Carteirinha Completa',
+      description: 'Palpitou em todos os jogos disponíveis',
+      unlocked: totalPredictions > 0 && totalPredictions === (totalMatchesCount ?? 0),
+    },
+    {
+      icon: '💯',
+      label: 'Aproveitamento Surreal',
+      description: '70% de aproveitamento ou mais (mín. 5 palpites)',
+      unlocked: totalPredictions >= 5 && aproveitamento >= 70,
+    },
+    {
+      icon: '🏅',
+      label: 'Veterano',
+      description: '10 ou mais palpites enviados',
+      unlocked: totalPredictions >= 10,
+    },
+    {
+      icon: '🧊',
+      label: 'Sangue Frio',
+      description: '5 ou mais placares com saldo de gol certo (2 pts)',
+      unlocked: goalDiffHits >= 5,
+    },
+  ];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
@@ -177,6 +247,10 @@ export default async function PerfilPage() {
           </div>
         </div>
       </div>
+
+      <PointsEvolutionChart data={pointsEvolution} />
+
+      <Achievements badges={badges} />
 
       <Link
         href="/todos"
