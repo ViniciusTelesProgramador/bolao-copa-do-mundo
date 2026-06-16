@@ -4,6 +4,7 @@ import { getRanking } from '@/app/actions';
 import MatchCard from '@/components/ui/MatchCard';
 import RankingTable from '@/components/ui/RankingTable';
 import RoundRankingClient, { RoundData } from '@/components/ui/RoundRankingClient';
+import PendingActionsBanner from '@/components/ui/PendingActionsBanner';
 import { Match, Prediction } from '@/types';
 import Link from 'next/link';
 import { isSameDayInSaoPaulo, getDateKeySaoPaulo } from '@/lib/date';
@@ -89,8 +90,48 @@ export default async function HomePage() {
     return isSameDayInSaoPaulo(match.match_time, nowInSaoPaulo);
   });
 
+  // 5. Pendências do usuário: jogos sem palpite que fecham nas próximas 48h + artilheiro
+  let missingMatches: Match[] = [];
+  let artilheiroMissing = false;
+  let artilheiroDeadlineLabel: string | undefined;
+
+  if (user) {
+    const urgentWindowMs = 48 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    missingMatches = matches
+      .filter((m) => {
+        const t = new Date(m.match_time).getTime();
+        return t > nowMs && t < nowMs + urgentWindowMs && !predictionsMap.has(m.id);
+      })
+      .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('artilheiro_guess')
+      .eq('id', user.id)
+      .single();
+
+    const deadlineStr = process.env.ARTILHEIRO_DEADLINE || '2026-06-18T23:59:59-03:00';
+    const artilheiroDeadline = new Date(deadlineStr);
+    artilheiroMissing = !profileData?.artilheiro_guess && nowMs < artilheiroDeadline.getTime();
+    if (artilheiroMissing) {
+      artilheiroDeadlineLabel = artilheiroDeadline.toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+        timeZone: 'America/Fortaleza',
+      });
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
+      {user && (
+        <PendingActionsBanner
+          missingMatches={missingMatches}
+          artilheiroMissing={artilheiroMissing}
+          artilheiroDeadlineLabel={artilheiroDeadlineLabel}
+        />
+      )}
+
       {/* Hero Assimétrico */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center mb-16 md:mb-24">
         {/* Lado Esquerdo: Título e CTA */}
