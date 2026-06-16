@@ -32,6 +32,11 @@ export const metadata: Metadata = {
     description: 'Palpite nos jogos e dispute com seus amigos!',
     images: ['/og-image'],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Bolão Copa 2026',
+  },
 };
 
 export const viewport = {
