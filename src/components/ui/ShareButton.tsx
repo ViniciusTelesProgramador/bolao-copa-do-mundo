@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { ShareNetwork, Spinner, DeviceMobile } from '@phosphor-icons/react';
 import { showToast } from './Toast';
+import type { PointsEvolutionEntry } from './PointsEvolutionChart';
+import type { AchievementBadge } from './Achievements';
 
 interface ShareButtonProps {
   position: number;
@@ -12,6 +14,8 @@ interface ShareButtonProps {
   streak: number;
   name: string;
   avatarUrl: string | null;
+  chartData?: PointsEvolutionEntry[];
+  badges?: AchievementBadge[];
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -59,8 +63,111 @@ async function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
+function drawSparkline(
+  ctx: CanvasRenderingContext2D,
+  data: PointsEvolutionEntry[],
+  x: number, y: number, w: number, h: number,
+) {
+  if (data.length < 2) return;
+  const maxVal = Math.max(...data.map(d => d.cumulative), 1);
+  const padX = 6;
+  const stepX = (w - padX * 2) / (data.length - 1);
+  const coords = data.map((d, i) => ({
+    px: x + padX + i * stepX,
+    py: y + h * 0.94 - (d.cumulative / maxVal) * h * 0.86,
+    gained: d.gained,
+  }));
+
+  // Area fill
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, 'rgba(34,197,94,0.26)');
+  grad.addColorStop(1, 'rgba(34,197,94,0.01)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(coords[0].px, coords[0].py);
+  for (let i = 1; i < coords.length; i++) ctx.lineTo(coords[i].px, coords[i].py);
+  ctx.lineTo(coords[coords.length - 1].px, y + h);
+  ctx.lineTo(coords[0].px, y + h);
+  ctx.closePath();
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(coords[0].px, coords[0].py);
+  for (let i = 1; i < coords.length; i++) ctx.lineTo(coords[i].px, coords[i].py);
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Dots
+  coords.forEach((c, i) => {
+    const isLast = i === coords.length - 1;
+    ctx.beginPath();
+    ctx.arc(c.px, c.py, isLast ? 5 : 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = c.gained > 0 ? '#22c55e' : '#475569';
+    ctx.fill();
+    if (isLast) {
+      ctx.strokeStyle = '#0b1628';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  });
+}
+
+function drawBadgeRow(
+  ctx: CanvasRenderingContext2D,
+  badges: AchievementBadge[],
+  cx: number, y: number,
+  badgeSize: number, gap: number,
+) {
+  if (badges.length === 0) return;
+  const totalW = badges.length * badgeSize + (badges.length - 1) * gap;
+  const startX = cx - totalW / 2;
+  badges.forEach((b, i) => {
+    const bxc = startX + i * (badgeSize + gap) + badgeSize / 2;
+    const byc = y + badgeSize / 2;
+    const r = badgeSize / 2;
+    ctx.fillStyle = 'rgba(245,158,11,0.18)';
+    ctx.beginPath();
+    ctx.arc(bxc, byc, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(245,158,11,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(bxc, byc, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = `${Math.round(badgeSize * 0.48)}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(b.icon, bxc, byc + 1);
+  });
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawSeparator(ctx: CanvasRenderingContext2D, y: number, x0: number, x1: number) {
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x0, y);
+  ctx.lineTo(x1, y);
+  ctx.stroke();
+}
+
+function drawSectionLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign = 'left') {
+  ctx.fillStyle = '#4b5563';
+  ctx.font = 'bold 9px system-ui, sans-serif';
+  ctx.letterSpacing = '1.5px';
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+  ctx.letterSpacing = '0px';
+  ctx.textAlign = 'left';
+}
+
 async function generateCard(props: ShareButtonProps): Promise<Blob> {
-  const W = 800, H = 420;
+  const W = 800, H = 520;
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -73,31 +180,29 @@ async function generateCard(props: ShareButtonProps): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Glow top-right
   const glow = ctx.createRadialGradient(W * 0.85, 30, 0, W * 0.85, 30, 300);
   glow.addColorStop(0, '#22c55e1a');
   glow.addColorStop(1, 'transparent');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 
-  // Top accent bar
   const bar = ctx.createLinearGradient(0, 0, W, 0);
   bar.addColorStop(0, '#22c55e');
   bar.addColorStop(1, '#16a34a');
   ctx.fillStyle = bar;
   ctx.fillRect(0, 0, W, 5);
 
-  // Header label
+  // Header
   ctx.fillStyle = '#22c55e';
   ctx.font = 'bold 14px system-ui, sans-serif';
   ctx.letterSpacing = '2px';
-  ctx.fillText('⚽  BOLÃO COPA 2026', 48, 46);
+  ctx.fillText('⚽  BOLÃO COPA 2026', 48, 44);
   ctx.letterSpacing = '0px';
 
   // Avatar
-  const avatarR = 52;
-  const avatarCX = 48 + avatarR;
-  const avatarCY = 74 + avatarR;
+  const avatarR = 44;
+  const avatarCX = 82;
+  const avatarCY = 116;
 
   if (props.avatarUrl) {
     const img = await loadImage(props.avatarUrl);
@@ -120,23 +225,49 @@ async function generateCard(props: ShareButtonProps): Promise<Blob> {
     drawLetterAvatar(ctx, props.name, avatarCX, avatarCY, avatarR);
   }
 
-  // Name
-  const textX = avatarCX + avatarR + 30;
-  const textY = avatarCY - 20;
+  // Name + position
+  const textX = avatarCX + avatarR + 28;
   ctx.fillStyle = '#f1f5f9';
-  ctx.font = 'bold 36px system-ui, sans-serif';
-  ctx.fillText(props.name.toUpperCase(), textX, textY);
-
-  // Position badge
+  ctx.font = 'bold 32px system-ui, sans-serif';
+  ctx.fillText(props.name.toUpperCase(), textX, 108);
   if (props.position > 0) {
     const medals = ['🥇', '🥈', '🥉'];
     const medal = medals[props.position - 1] ?? '🏅';
     ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 19px system-ui, sans-serif';
-    ctx.fillText(`${medal}  ${props.position}º lugar no bolão`, textX, textY + 38);
+    ctx.font = 'bold 17px system-ui, sans-serif';
+    ctx.fillText(`${medal}  ${props.position}º lugar no bolão`, textX, 144);
   }
 
-  // Stats boxes
+  // — Chart section —
+  drawSeparator(ctx, 172, 20, W - 20);
+  drawSectionLabel(ctx, 'EVOLUÇÃO DE PONTOS', 20, 190);
+
+  if (props.chartData && props.chartData.length >= 2) {
+    drawSparkline(ctx, props.chartData, 20, 198, W - 40, 96);
+  } else {
+    ctx.fillStyle = '#334155';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('Aguardando mais jogos com resultado.', 20, 246);
+  }
+
+  // — Badges section —
+  drawSeparator(ctx, 306, 20, W - 20);
+  const unlockedBadges = (props.badges ?? []).filter(b => b.unlocked);
+  drawSectionLabel(ctx, `CONQUISTAS  ${unlockedBadges.length}/${(props.badges ?? []).length}`, 20, 324);
+
+  if (unlockedBadges.length > 0) {
+    drawBadgeRow(ctx, unlockedBadges, W / 2, 332, 36, 10);
+  } else {
+    ctx.fillStyle = '#334155';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Nenhuma conquista desbloqueada ainda', W / 2, 354);
+    ctx.textAlign = 'left';
+  }
+
+  // — Stats boxes —
+  drawSeparator(ctx, 382, 20, W - 20);
+
   const aprvColor = props.aproveitamento >= 70 ? '#22c55e' : props.aproveitamento >= 40 ? '#f59e0b' : '#ef4444';
   const stats = [
     { label: 'PONTOS',    value: String(props.totalPoints),  color: '#4ade80' },
@@ -145,39 +276,35 @@ async function generateCard(props: ShareButtonProps): Promise<Blob> {
     { label: 'SEQUÊNCIA', value: props.streak > 0 ? `🔥 ${props.streak}` : '—', color: '#fb923c' },
   ];
 
-  const boxW = 156, boxH = 98, gap = 16;
-  const totalW = stats.length * boxW + (stats.length - 1) * gap;
-  const boxX0 = (W - totalW) / 2;
-  const boxY = H - boxH - 48;
+  const boxW = 166, boxH = 78, gap = 12;
+  const totalBoxW = stats.length * boxW + (stats.length - 1) * gap;
+  const boxX0 = (W - totalBoxW) / 2;
+  const boxY = 390;
 
   stats.forEach((stat, i) => {
     const bx = boxX0 + i * (boxW + gap);
-
     ctx.fillStyle = 'rgba(255,255,255,0.055)';
-    roundRect(ctx, bx, boxY, boxW, boxH, 14);
+    roundRect(ctx, bx, boxY, boxW, boxH, 12);
     ctx.fill();
-
     ctx.strokeStyle = 'rgba(255,255,255,0.10)';
     ctx.lineWidth = 1;
-    roundRect(ctx, bx, boxY, boxW, boxH, 14);
+    roundRect(ctx, bx, boxY, boxW, boxH, 12);
     ctx.stroke();
-
     ctx.fillStyle = stat.color;
-    ctx.font = 'bold 31px system-ui, sans-serif';
+    ctx.font = 'bold 28px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(stat.value, bx + boxW / 2, boxY + 50);
-
+    ctx.fillText(stat.value, bx + boxW / 2, boxY + 44);
     ctx.fillStyle = '#64748b';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText(stat.label, bx + boxW / 2, boxY + 76);
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.fillText(stat.label, bx + boxW / 2, boxY + 65);
   });
 
   ctx.textAlign = 'left';
 
   // URL footer
   ctx.fillStyle = '#334155';
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText('bolao-copa-do-mundo-tau.vercel.app', 48, H - 18);
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText('bolao-copa-do-mundo-tau.vercel.app', 48, H - 14);
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'));
 }
@@ -196,7 +323,6 @@ async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Glows
   const glow1 = ctx.createRadialGradient(W * 0.85, 220, 0, W * 0.85, 220, 420);
   glow1.addColorStop(0, '#22c55e22');
   glow1.addColorStop(1, 'transparent');
@@ -209,7 +335,6 @@ async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
   ctx.fillStyle = glow2;
   ctx.fillRect(0, 0, W, H);
 
-  // Top accent bar
   const bar = ctx.createLinearGradient(0, 0, W, 0);
   bar.addColorStop(0, '#22c55e');
   bar.addColorStop(1, '#16a34a');
@@ -218,17 +343,17 @@ async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
 
   ctx.textAlign = 'center';
 
-  // Header label
+  // Header
   ctx.fillStyle = '#22c55e';
-  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.font = 'bold 28px system-ui, sans-serif';
   ctx.letterSpacing = '4px';
-  ctx.fillText('⚽  BOLÃO COPA 2026', W / 2, 150);
+  ctx.fillText('⚽  BOLÃO COPA 2026', W / 2, 128);
   ctx.letterSpacing = '0px';
 
-  // Avatar
-  const avatarR = 150;
+  // Avatar — smaller than original to make room for chart+badges
+  const avatarR = 120;
   const avatarCX = W / 2;
-  const avatarCY = 420;
+  const avatarCY = 318;
 
   if (props.avatarUrl) {
     const img = await loadImage(props.avatarUrl);
@@ -240,7 +365,7 @@ async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
       ctx.drawImage(img, avatarCX - avatarR, avatarCY - avatarR, avatarR * 2, avatarR * 2);
       ctx.restore();
       ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 5;
       ctx.beginPath();
       ctx.arc(avatarCX, avatarCY, avatarR, 0, Math.PI * 2);
       ctx.stroke();
@@ -251,21 +376,91 @@ async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
     drawLetterAvatar(ctx, props.name, avatarCX, avatarCY, avatarR);
   }
 
-  // Name
+  // Name + position
   ctx.fillStyle = '#f1f5f9';
-  ctx.font = 'bold 68px system-ui, sans-serif';
-  ctx.fillText(props.name.toUpperCase(), W / 2, avatarCY + avatarR + 90);
+  ctx.font = 'bold 58px system-ui, sans-serif';
+  ctx.fillText(props.name.toUpperCase(), W / 2, avatarCY + avatarR + 66);
 
-  // Position badge
   if (props.position > 0) {
     const medals = ['🥇', '🥈', '🥉'];
     const medal = medals[props.position - 1] ?? '🏅';
     ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 42px system-ui, sans-serif';
-    ctx.fillText(`${medal}  ${props.position}º lugar no bolão`, W / 2, avatarCY + avatarR + 160);
+    ctx.font = 'bold 34px system-ui, sans-serif';
+    ctx.fillText(`${medal}  ${props.position}º lugar no bolão`, W / 2, avatarCY + avatarR + 124);
   }
 
-  // Stats grid 2x2
+  // — Chart section —
+  const sep1Y = avatarCY + avatarR + 156;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(60, sep1Y);
+  ctx.lineTo(W - 60, sep1Y);
+  ctx.stroke();
+
+  const chartLabelY = sep1Y + 34;
+  ctx.fillStyle = '#4b5563';
+  ctx.font = 'bold 20px system-ui, sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText('EVOLUÇÃO DE PONTOS', W / 2, chartLabelY);
+  ctx.letterSpacing = '0px';
+
+  const chartY = chartLabelY + 18;
+  const chartH = 178;
+
+  if (props.chartData && props.chartData.length >= 2) {
+    drawSparkline(ctx, props.chartData, 64, chartY, W - 128, chartH);
+  } else {
+    ctx.fillStyle = '#334155';
+    ctx.font = '24px system-ui, sans-serif';
+    ctx.fillText('Aguardando mais jogos com resultado.', W / 2, chartY + chartH / 2);
+  }
+
+  // — Badges section —
+  const sep2Y = chartY + chartH + 22;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(60, sep2Y);
+  ctx.lineTo(W - 60, sep2Y);
+  ctx.stroke();
+
+  const unlockedBadges = (props.badges ?? []).filter(b => b.unlocked);
+  const badgeLabelY = sep2Y + 36;
+  ctx.fillStyle = '#4b5563';
+  ctx.font = 'bold 20px system-ui, sans-serif';
+  ctx.letterSpacing = '2px';
+  ctx.fillText(`CONQUISTAS  ${unlockedBadges.length}/${(props.badges ?? []).length}`, W / 2, badgeLabelY);
+  ctx.letterSpacing = '0px';
+
+  const badgeSize = 70;
+  const badgeGap = 20;
+  const badgeY0 = badgeLabelY + 16;
+  const perRow = 4;
+  const badgeRows = unlockedBadges.length > 0 ? Math.ceil(unlockedBadges.length / perRow) : 1;
+
+  if (unlockedBadges.length > 0) {
+    for (let row = 0; row < badgeRows; row++) {
+      const rowBadges = unlockedBadges.slice(row * perRow, (row + 1) * perRow);
+      drawBadgeRow(ctx, rowBadges, W / 2, badgeY0 + row * (badgeSize + badgeGap), badgeSize, badgeGap);
+    }
+  } else {
+    ctx.fillStyle = '#334155';
+    ctx.font = '24px system-ui, sans-serif';
+    ctx.fillText('Nenhuma conquista desbloqueada ainda', W / 2, badgeY0 + badgeSize / 2);
+  }
+
+  const badgesBottom = badgeY0 + badgeRows * (badgeSize + badgeGap);
+
+  // — Stats grid 2×2 —
+  const sep3Y = badgesBottom + 10;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(60, sep3Y);
+  ctx.lineTo(W - 60, sep3Y);
+  ctx.stroke();
+
   const aprvColor = props.aproveitamento >= 70 ? '#22c55e' : props.aproveitamento >= 40 ? '#f59e0b' : '#ef4444';
   const stats = [
     { label: 'PONTOS',    value: String(props.totalPoints),  color: '#4ade80' },
@@ -274,43 +469,44 @@ async function generateStoryCard(props: ShareButtonProps): Promise<Blob> {
     { label: 'SEQUÊNCIA', value: props.streak > 0 ? `🔥 ${props.streak}` : '—', color: '#fb923c' },
   ];
 
-  const boxW = 420, boxH = 230, gapX = 28, gapY = 28;
+  const boxW = 420, boxH = 192, gapX = 28, gapY = 24;
   const gridW = boxW * 2 + gapX;
   const gridX0 = (W - gridW) / 2;
-  const gridY0 = avatarCY + avatarR + 260;
+  const statsY = sep3Y + 28;
 
   stats.forEach((stat, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const bx = gridX0 + col * (boxW + gapX);
-    const by = gridY0 + row * (boxH + gapY);
+    const by = statsY + row * (boxH + gapY);
 
     ctx.fillStyle = 'rgba(255,255,255,0.055)';
     roundRect(ctx, bx, by, boxW, boxH, 22);
     ctx.fill();
-
     ctx.strokeStyle = 'rgba(255,255,255,0.10)';
     ctx.lineWidth = 1.5;
     roundRect(ctx, bx, by, boxW, boxH, 22);
     ctx.stroke();
 
     ctx.fillStyle = stat.color;
-    ctx.font = 'bold 72px system-ui, sans-serif';
-    ctx.fillText(stat.value, bx + boxW / 2, by + 120);
-
+    ctx.font = 'bold 64px system-ui, sans-serif';
+    ctx.fillText(stat.value, bx + boxW / 2, by + 108);
     ctx.fillStyle = '#64748b';
-    ctx.font = 'bold 24px system-ui, sans-serif';
-    ctx.fillText(stat.label, bx + boxW / 2, by + 175);
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.fillText(stat.label, bx + boxW / 2, by + 156);
   });
 
-  // Call to action + footer
+  // CTA + URL (pinned towards bottom, at least 60px below stats)
+  const statsBottom = statsY + 2 * boxH + gapY;
+  const ctaY = Math.max(statsBottom + 80, H - 210);
+
   ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 30px system-ui, sans-serif';
-  ctx.fillText('Cola no bolão e disputa com a gente! 👇', W / 2, H - 160);
+  ctx.font = 'bold 28px system-ui, sans-serif';
+  ctx.fillText('Cola no bolão e disputa com a gente! 👇', W / 2, ctaY);
 
   ctx.fillStyle = '#334155';
-  ctx.font = '26px system-ui, sans-serif';
-  ctx.fillText('bolao-copa-do-mundo-tau.vercel.app', W / 2, H - 100);
+  ctx.font = '24px system-ui, sans-serif';
+  ctx.fillText('bolao-copa-do-mundo-tau.vercel.app', W / 2, ctaY + 54);
 
   ctx.textAlign = 'left';
 

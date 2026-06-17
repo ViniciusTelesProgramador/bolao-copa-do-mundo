@@ -202,6 +202,8 @@ export default async function PerfilPage() {
                 streak={currentStreak}
                 name={profile?.name || user.email?.split('@')[0] || '?'}
                 avatarUrl={profile?.avatar_url ?? null}
+                chartData={pointsEvolution}
+                badges={badges}
               />
               </div>
             </div>
