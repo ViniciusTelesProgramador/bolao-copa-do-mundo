@@ -4,6 +4,7 @@ import PredictionsListClient from '@/components/ui/PredictionsListClient';
 import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 import KnockoutBracket, { BracketColumn } from '@/components/ui/KnockoutBracket';
 import HeadToHeadClient from '@/components/ui/HeadToHeadClient';
+import TodosTabsClient from '@/components/ui/TodosTabsClient';
 import { fetchPlayerImage, normalizeName } from '@/lib/football-data';
 import { Match } from '@/types';
 
@@ -163,173 +164,169 @@ export default async function TodosPalpitesPage() {
         <KnockoutBracket columns={bracketColumns} thirdPlace={thirdPlaceMatch} />
       )}
 
-      {/* Seção: Artilheiro — palpite + cards por jogador */}
-      <div className="mb-12">
-        <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border-custom/60">
-          <span className="text-lg">⚽</span>
-          <h2 className="text-sm font-black text-primary uppercase tracking-wider">Palpites de Artilheiro</h2>
-          <span className="text-[10px] font-black text-secondary bg-muted border border-border-custom px-2 py-0.5 rounded-full">+5 pts para quem acertar</span>
-        </div>
-
-        {user && (
-          <ArtilheiroGuessForm
-            currentGuess={myProfile?.artilheiro_guess ?? null}
-            artilheiroPoints={myProfile?.artilheiro_points ?? 0}
-            isLocked={artilheiroLocked}
-            deadlineLabel={artilheiroDeadlineLabel}
-            deadline={deadlineStr}
-          />
-        )}
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {/* Easter egg / piada interna do grupo — não é um voto real, só visual */}
-          <div className="rounded-2xl border border-pink-500/30 bg-pink-500/5 overflow-hidden flex flex-col shadow-lg shadow-pink-500/10">
-            <div className="relative w-full aspect-square bg-muted/40 overflow-hidden">
-              <img
-                src="/easter-eggs/leda.png"
-                alt="Leda Henrique"
-                className="w-full h-full object-cover object-top"
-              />
-              <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                1 voto
+      <TodosTabsClient
+        palpitesContent={
+          <>
+            {/* Seção: Artilheiro — palpite + cards por jogador */}
+            <div className="mb-12">
+              <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border-custom/60">
+                <span className="text-lg">⚽</span>
+                <h2 className="text-sm font-black text-primary uppercase tracking-wider">Palpites de Artilheiro</h2>
+                <span className="text-[10px] font-black text-secondary bg-muted border border-border-custom px-2 py-0.5 rounded-full">+5 pts para quem acertar</span>
               </div>
-            </div>
 
-            <div className="px-3 pt-2.5 pb-1.5">
-              <p className="text-sm font-black truncate text-pink-400">Leda Henrique</p>
-            </div>
+              {user && (
+                <ArtilheiroGuessForm
+                  currentGuess={myProfile?.artilheiro_guess ?? null}
+                  artilheiroPoints={myProfile?.artilheiro_points ?? 0}
+                  isLocked={artilheiroLocked}
+                  deadlineLabel={artilheiroDeadlineLabel}
+                  deadline={deadlineStr}
+                />
+              )}
 
-            <div className="flex items-center gap-1.5 px-3 pb-1.5">
-              <div className="h-px flex-1 bg-border-custom/40" />
-              <span className="text-secondary text-[10px] font-black">▼</span>
-              <div className="h-px flex-1 bg-border-custom/40" />
-            </div>
-
-            <div className="px-3 pb-3 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white shrink-0 bg-pink-500">A</span>
-                <span className="text-[11px] font-bold truncate text-secondary">Alysson Amorim</span>
-              </div>
-            </div>
-          </div>
-
-          {sortedGroups.map(group => {
-              const acertou = group.voters.some(v => (v.artilheiro_points ?? 0) > 0);
-              return (
-                <div
-                  key={group.canonicalName}
-                  className={`rounded-2xl border overflow-hidden flex flex-col transition-all ${
-                    acertou
-                      ? 'border-amber-500/40 bg-amber-500/5 shadow-lg shadow-amber-500/10'
-                      : 'border-border-custom bg-card'
-                  }`}
-                >
-                  {/* Foto do jogador */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* Easter egg / piada interna do grupo — não é um voto real, só visual */}
+                <div className="rounded-2xl border border-pink-500/30 bg-pink-500/5 overflow-hidden flex flex-col shadow-lg shadow-pink-500/10">
                   <div className="relative w-full aspect-square bg-muted/40 overflow-hidden">
-                    {group.playerImg ? (
-                      <img
-                        src={group.playerImg}
-                        alt={group.canonicalName}
-                        className="w-full h-full object-cover object-top"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-5xl font-black text-secondary/20 select-none">
-                          {group.canonicalName.substring(0, 1).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Badge de votos */}
+                    <img
+                      src="/easter-eggs/leda.png"
+                      alt="Leda Henrique"
+                      className="w-full h-full object-cover object-top"
+                    />
                     <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                      {group.voters.length} {group.voters.length === 1 ? 'voto' : 'votos'}
+                      1 voto
                     </div>
-
-                    {/* Badge de campeão */}
-                    {acertou && (
-                      <div className="absolute top-2 left-2 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
-                        🏆 Acertou!
-                      </div>
-                    )}
                   </div>
 
-                  {/* Nome do jogador */}
                   <div className="px-3 pt-2.5 pb-1.5">
-                    <p className={`text-sm font-black truncate ${acertou ? 'text-amber-500' : 'text-primary'}`}>
-                      {group.canonicalName}
-                    </p>
+                    <p className="text-sm font-black truncate text-pink-400">Leda Henrique</p>
                   </div>
 
-                  {/* Seta divisória */}
                   <div className="flex items-center gap-1.5 px-3 pb-1.5">
                     <div className="h-px flex-1 bg-border-custom/40" />
                     <span className="text-secondary text-[10px] font-black">▼</span>
                     <div className="h-px flex-1 bg-border-custom/40" />
                   </div>
 
-                  {/* Quem votou */}
                   <div className="px-3 pb-3 flex flex-col gap-1.5">
-                    {group.voters.map(v => {
-                      const isSelf = v.id === user?.id;
-                      return (
-                        <div key={v.id} className="flex items-center gap-1.5 min-w-0">
-                          {v.avatar_url ? (
-                            <img
-                              src={v.avatar_url}
-                              alt={v.name}
-                              className="w-5 h-5 rounded-full object-cover shrink-0 border border-border-custom"
-                            />
-                          ) : (
-                            <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white shrink-0 ${avatarColor(v.name)}`}>
-                              {v.name.substring(0, 1).toUpperCase()}
-                            </span>
-                          )}
-                          <span className={`text-[11px] font-bold truncate ${isSelf ? 'text-accent-custom' : 'text-secondary'}`}>
-                            {v.name}{isSelf && <span className="ml-0.5 opacity-70 text-[9px]"> (você)</span>}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white shrink-0 bg-pink-500">A</span>
+                      <span className="text-[11px] font-bold truncate text-secondary">Alysson Amorim</span>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
-        {/* Quem ainda não palpitou */}
-        {profilesWithoutGuess.length > 0 && (
-          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[10px] text-secondary font-black uppercase tracking-wider">Sem palpite:</span>
-            {profilesWithoutGuess.map(p => (
-              <span key={p.id} className="text-[11px] text-secondary/50 font-bold">{p.name}</span>
-            ))}
-          </div>
-        )}
-      </div>
+                {sortedGroups.map(group => {
+                  const acertou = group.voters.some(v => (v.artilheiro_points ?? 0) > 0);
+                  return (
+                    <div
+                      key={group.canonicalName}
+                      className={`rounded-2xl border overflow-hidden flex flex-col transition-all ${
+                        acertou
+                          ? 'border-amber-500/40 bg-amber-500/5 shadow-lg shadow-amber-500/10'
+                          : 'border-border-custom bg-card'
+                      }`}
+                    >
+                      <div className="relative w-full aspect-square bg-muted/40 overflow-hidden">
+                        {group.playerImg ? (
+                          <img
+                            src={group.playerImg}
+                            alt={group.canonicalName}
+                            className="w-full h-full object-cover object-top"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-5xl font-black text-secondary/20 select-none">
+                              {group.canonicalName.substring(0, 1).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                          {group.voters.length} {group.voters.length === 1 ? 'voto' : 'votos'}
+                        </div>
+                        {acertou && (
+                          <div className="absolute top-2 left-2 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full shadow-md">
+                            🏆 Acertou!
+                          </div>
+                        )}
+                      </div>
 
-      {/* Palpites dos jogos */}
-      {matches.length === 0 ? (
-        <div className="bg-card border border-border-custom rounded-2xl p-8 text-center text-secondary">
-          Nenhum jogo cadastrado.
-        </div>
-      ) : (
-        <PredictionsListClient
-          matches={matches}
-          predictions={predictions}
-          predictionsCount={predictionsCount}
-          currentUserId={user?.id || null}
-          allProfiles={allProfiles}
-        />
-      )}
+                      <div className="px-3 pt-2.5 pb-1.5">
+                        <p className={`text-sm font-black truncate ${acertou ? 'text-amber-500' : 'text-primary'}`}>
+                          {group.canonicalName}
+                        </p>
+                      </div>
 
-      <div className="mt-12">
-        <HeadToHeadClient
-          profiles={allProfiles}
-          matches={matches}
-          predictions={predictions}
-          currentUserId={user?.id || null}
-        />
-      </div>
+                      <div className="flex items-center gap-1.5 px-3 pb-1.5">
+                        <div className="h-px flex-1 bg-border-custom/40" />
+                        <span className="text-secondary text-[10px] font-black">▼</span>
+                        <div className="h-px flex-1 bg-border-custom/40" />
+                      </div>
+
+                      <div className="px-3 pb-3 flex flex-col gap-1.5">
+                        {group.voters.map(v => {
+                          const isSelf = v.id === user?.id;
+                          return (
+                            <div key={v.id} className="flex items-center gap-1.5 min-w-0">
+                              {v.avatar_url ? (
+                                <img
+                                  src={v.avatar_url}
+                                  alt={v.name}
+                                  className="w-5 h-5 rounded-full object-cover shrink-0 border border-border-custom"
+                                />
+                              ) : (
+                                <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[9px] font-black text-white shrink-0 ${avatarColor(v.name)}`}>
+                                  {v.name.substring(0, 1).toUpperCase()}
+                                </span>
+                              )}
+                              <span className={`text-[11px] font-bold truncate ${isSelf ? 'text-accent-custom' : 'text-secondary'}`}>
+                                {v.name}{isSelf && <span className="ml-0.5 opacity-70 text-[9px]"> (você)</span>}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {profilesWithoutGuess.length > 0 && (
+                <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-[10px] text-secondary font-black uppercase tracking-wider">Sem palpite:</span>
+                  {profilesWithoutGuess.map(p => (
+                    <span key={p.id} className="text-[11px] text-secondary/50 font-bold">{p.name}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Palpites dos jogos */}
+            {matches.length === 0 ? (
+              <div className="bg-card border border-border-custom rounded-2xl p-8 text-center text-secondary">
+                Nenhum jogo cadastrado.
+              </div>
+            ) : (
+              <PredictionsListClient
+                matches={matches}
+                predictions={predictions}
+                predictionsCount={predictionsCount}
+                currentUserId={user?.id || null}
+                allProfiles={allProfiles}
+              />
+            )}
+          </>
+        }
+        x1Content={
+          <HeadToHeadClient
+            profiles={allProfiles}
+            matches={matches}
+            predictions={predictions}
+            currentUserId={user?.id || null}
+          />
+        }
+      />
     </div>
   );
 }

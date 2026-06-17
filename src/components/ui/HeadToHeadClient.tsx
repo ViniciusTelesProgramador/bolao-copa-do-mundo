@@ -47,6 +47,7 @@ export default function HeadToHeadClient({ profiles, matches, predictions, curre
     const predsB = new Map(predictions.filter((p) => p.user_id === userBId).map((p) => [p.match_id, p]));
 
     const sortedMatches = [...matches]
+      .filter((m) => m.home_score !== null && m.away_score !== null)
       .filter((m) => predsA.has(m.id) || predsB.has(m.id))
       .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
 
@@ -139,7 +140,7 @@ export default function HeadToHeadClient({ profiles, matches, predictions, curre
       {/* Lista jogo a jogo */}
       {comparison.rows.length === 0 ? (
         <div className="px-5 pb-5 text-center text-xs text-secondary font-bold">
-          Nenhum dos dois palpitou em jogos em comum ainda.
+          Nenhum jogo encerrado com palpites dos dois ainda.
         </div>
       ) : (
         <div className="px-5 pb-5 space-y-2.5">
