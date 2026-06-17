@@ -181,9 +181,9 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Lado Direito: Snapshot do Ranking */}
+        {/* Lado Direito: Snapshot do Ranking — Pódio */}
         <div className="lg:col-span-5 bg-card border border-border-custom rounded-2xl p-6 shadow-xl w-full">
-          <h3 className="text-sm font-bold text-secondary uppercase tracking-wider mb-4 flex items-center gap-1.5 select-none">
+          <h3 className="text-sm font-bold text-secondary uppercase tracking-wider mb-5 flex items-center gap-1.5 select-none">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" fill="currentColor" className="text-yellow-500">
               <path d="M200,40H176a8,8,0,0,0,0,16h24v48c0,28.89-21.73,53.2-51.27,57.38A80.24,80.24,0,0,1,136,175.79V200h16a8,8,0,0,1,0,16H136v16h24a8,8,0,0,1,0,16H96a8,8,0,0,1,0-16h24V216H104a8,8,0,0,1,0-16h16V175.79A80.24,80.24,0,0,1,107.27,161.4C77.73,157.2,56,132.89,56,104V56H80a8,8,0,0,0,0-16H56A16,16,0,0,0,40,56v48c0,35.91,26.47,66.19,62,71.39V200h-8a8,8,0,0,0,0,16h8v16h-8a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16h-8V216h8a8,8,0,0,0,0-16h-8V175.39c35.53-5.2,62-35.48,62-71.39V56A16,16,0,0,0,200,40ZM72,56H88V80H72ZM184,80H168V56H184Z"></path>
             </svg>
@@ -194,35 +194,64 @@ export default async function HomePage() {
             <div className="text-xs text-secondary py-4 italic">
               Nenhuma pontuação registrada ainda. Seja o primeiro a palpitar!
             </div>
-          ) : (
-            <div className="space-y-3">
-              {topThree.map((player, idx) => {
-                const colors = [
-                  'border-yellow-500/20 bg-yellow-500/5 text-yellow-600 dark:text-yellow-400',
-                  'border-slate-400/20 bg-slate-400/5 text-slate-600 dark:text-slate-300',
-                  'border-amber-600/20 bg-amber-600/5 text-amber-700 dark:text-amber-500'
+          ) : (() => {
+            const avatarColors = ['bg-red-500','bg-blue-500','bg-emerald-500','bg-amber-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-cyan-500'];
+            const avatarColor = (name: string) => avatarColors[(name.charCodeAt(0) || 0) % avatarColors.length];
+
+            // Ordem visual do pódio: 2º, 1º, 3º
+            const order = [topThree[1], topThree[0], topThree[2]].filter(Boolean);
+            const podiumConfig = topThree[1]
+              ? [
+                  { rank: 2, medal: '🥈', barH: 'h-14', barBg: 'bg-slate-400/15 border-slate-400/25', ringColor: 'ring-slate-400/40', labelColor: 'text-slate-400', avatarSize: 'w-11 h-11', textSize: 'text-[11px]' },
+                  { rank: 1, medal: '🥇', barH: 'h-24', barBg: 'bg-yellow-500/15 border-yellow-500/30', ringColor: 'ring-yellow-500/50', labelColor: 'text-yellow-500', avatarSize: 'w-14 h-14', textSize: 'text-xs' },
+                  { rank: 3, medal: '🥉', barH: 'h-9',  barBg: 'bg-amber-700/15 border-amber-700/25', ringColor: 'ring-amber-700/40', labelColor: 'text-amber-600 dark:text-amber-500', avatarSize: 'w-11 h-11', textSize: 'text-[11px]' },
+                ]
+              : [
+                  { rank: 1, medal: '🥇', barH: 'h-24', barBg: 'bg-yellow-500/15 border-yellow-500/30', ringColor: 'ring-yellow-500/50', labelColor: 'text-yellow-500', avatarSize: 'w-14 h-14', textSize: 'text-xs' },
                 ];
-                return (
-                  <div
-                    key={player.user_id}
-                    className={`flex items-center justify-between p-3.5 border rounded-xl ${colors[idx] || 'border-border-custom bg-muted/30 text-secondary'}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-black tracking-wider uppercase opacity-85">
-                        {idx + 1}º
-                      </span>
-                      <span className="font-bold text-sm truncate max-w-[140px] sm:max-w-xs">
+
+            return (
+              <div className="flex items-end justify-center gap-2 pt-2 pb-1">
+                {order.map((player, visualIdx) => {
+                  const cfg = podiumConfig[visualIdx];
+                  if (!player || !cfg) return null;
+                  const isFirst = cfg.rank === 1;
+                  return (
+                    <div key={player.user_id} className="flex flex-col items-center flex-1 min-w-0">
+                      {/* Medalha */}
+                      <span className="text-lg mb-1 select-none">{cfg.medal}</span>
+
+                      {/* Avatar */}
+                      {player.avatar_url ? (
+                        <img
+                          src={player.avatar_url}
+                          alt={player.name}
+                          className={`${cfg.avatarSize} rounded-full object-cover ring-2 ${cfg.ringColor} mb-2 shrink-0`}
+                        />
+                      ) : (
+                        <span className={`${cfg.avatarSize} rounded-full flex items-center justify-center font-black text-white ring-2 ${cfg.ringColor} mb-2 shrink-0 select-none ${avatarColor(player.name)} ${isFirst ? 'text-base' : 'text-sm'}`}>
+                          {player.name.substring(0, 1).toUpperCase()}
+                        </span>
+                      )}
+
+                      {/* Nome + Pontos */}
+                      <p className={`font-black truncate w-full text-center leading-tight ${cfg.labelColor} ${cfg.textSize}`}>
                         {player.name}
-                      </span>
+                      </p>
+                      <p className={`font-bold text-secondary mb-2 ${isFirst ? 'text-xs' : 'text-[10px]'}`}>
+                        {player.total_points} pts
+                      </p>
+
+                      {/* Bloco do pódio */}
+                      <div className={`w-full ${cfg.barH} ${cfg.barBg} border rounded-t-xl flex items-center justify-center select-none`}>
+                        <span className={`font-black ${cfg.labelColor} ${isFirst ? 'text-sm' : 'text-xs'}`}>{cfg.rank}º</span>
+                      </div>
                     </div>
-                    <span className="font-extrabold text-base tracking-wider">
-                      {player.total_points} pts
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
