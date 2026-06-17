@@ -190,8 +190,15 @@ function MatchAccordionContent({
           Nenhum palpite registrado para esse jogo.
         </div>
       )}
+      {!matchStarted && matchPredictions.length > 0 && (
+        <div className="px-4 py-2 flex items-center gap-1.5 bg-muted/30 border-b border-border-custom/30">
+          <span className="text-[10px]">🔒</span>
+          <span className="text-[10px] text-secondary font-bold">Palpites revelados quando o jogo começar</span>
+        </div>
+      )}
       {matchPredictions.map((pred) => {
         const isSelf = pred.user_id === currentUserId;
+        const scoreVisible = (matchStarted || isSelf) && pred.home_score !== -1;
         const profile = profileMap.get(pred.user_id);
         const avatarUrl = profile?.avatar_url ?? null;
         const avatarStyle = getAvatarStyle(pred.user_name);
@@ -229,12 +236,18 @@ function MatchAccordionContent({
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span
-                style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
-                className={`font-extrabold text-sm tracking-wider select-all ${isSelf ? 'text-accent-custom' : ''}`}
-              >
-                {pred.home_score} x {pred.away_score}
-              </span>
+              {scoreVisible ? (
+                <span
+                  style={{ color: isSelf ? undefined : 'var(--text-primary)' }}
+                  className={`font-extrabold text-sm tracking-wider select-all ${isSelf ? 'text-accent-custom' : ''}`}
+                >
+                  {pred.home_score} x {pred.away_score}
+                </span>
+              ) : (
+                <span className="font-extrabold text-sm tracking-wider text-secondary/40 select-none">
+                  ? x ?
+                </span>
+              )}
               {hasPoints && (
                 <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg border shrink-0 ${pointsColor}`}>
                   {pred.points}pts

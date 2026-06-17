@@ -118,15 +118,22 @@ export default async function TodosPalpitesPage() {
     .select(`id, match_id, user_id, home_score, away_score, points, profiles ( name )`);
 
   const rawPredictions = (predictionsData || []) as unknown as RawPrediction[];
-  const predictions = rawPredictions.map(p => ({
-    id: p.id,
-    match_id: p.match_id,
-    user_id: p.user_id,
-    home_score: p.home_score,
-    away_score: p.away_score,
-    points: p.points,
-    user_name: p.profiles?.name || 'Participante',
-  }));
+  const now = new Date();
+  const startedMatchIds = new Set(matches.filter(m => new Date(m.match_time) <= now).map(m => m.id));
+  const predictions = rawPredictions.map(p => {
+    const isOwnPrediction = p.user_id === user?.id;
+    const matchStarted = startedMatchIds.has(p.match_id);
+    const revealScore = matchStarted || isOwnPrediction;
+    return {
+      id: p.id,
+      match_id: p.match_id,
+      user_id: p.user_id,
+      home_score: revealScore ? p.home_score : -1,
+      away_score: revealScore ? p.away_score : -1,
+      points: p.points,
+      user_name: p.profiles?.name || 'Participante',
+    };
+  });
 
   const predictionsCount: Record<string, number> = {};
   try {
