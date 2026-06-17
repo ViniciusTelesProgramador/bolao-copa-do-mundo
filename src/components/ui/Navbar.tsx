@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Trophy, Shield, User, SignOut, List, X, Calendar, SoccerBall } from '@phosphor-icons/react';
+import { Trophy, Shield, User, SignOut, List, X, Calendar, SoccerBall, Sword } from '@phosphor-icons/react';
 import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
@@ -74,6 +74,7 @@ export default function Navbar() {
     { name: 'Ranking', href: '/', icon: Trophy },
     ...(user ? [{ name: 'Palpitar', href: '/palpites', icon: Calendar }] : []),
     ...(user ? [{ name: 'Todos', href: '/todos', icon: List }] : []),
+    ...(user ? [{ name: 'X1', href: '/x1', icon: Sword }] : []),
     ...(user ? [{ name: 'Meu Perfil', href: '/perfil', icon: User }] : []),
     ...(isAdmin ? [{ name: 'Painel Admin', href: '/admin', icon: Shield }] : []),
   ];

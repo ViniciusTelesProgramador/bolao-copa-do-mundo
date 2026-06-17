@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { House, Calendar, Trophy, User } from '@phosphor-icons/react';
+import { House, Calendar, Trophy, Sword, User } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 
 export default function BottomNav() {
@@ -34,6 +34,7 @@ export default function BottomNav() {
     { name: 'Início', href: '/', icon: House },
     { name: 'Palpitar', href: '/palpites', icon: Calendar },
     { name: 'Todos', href: '/todos', icon: Trophy },
+    { name: 'X1', href: '/x1', icon: Sword },
     { name: 'Perfil', href: '/perfil', icon: User },
   ];
 
