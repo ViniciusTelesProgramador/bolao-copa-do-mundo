@@ -744,3 +744,35 @@ export async function registerUser(nickname: string, password: string) {
   }
 }
 
+export async function upsertMatchComment(
+  matchId: string,
+  content: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Não autenticado' };
+
+  const trimmed = content.trim();
+  if (!trimmed || trimmed.length > 200) return { error: 'Comentário inválido' };
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('match_time')
+    .eq('id', matchId)
+    .single();
+
+  if (!match || new Date(match.match_time) > new Date()) {
+    return { error: 'O jogo ainda não começou' };
+  }
+
+  const { error } = await supabase
+    .from('match_comments')
+    .upsert(
+      { match_id: matchId, user_id: user.id, content: trimmed },
+      { onConflict: 'match_id,user_id' },
+    );
+
+  if (error) return { error: error.message };
+  return {};
+}
+

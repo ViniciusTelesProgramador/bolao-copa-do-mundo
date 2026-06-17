@@ -5,6 +5,7 @@ import FlagTeam, { getCountryCode } from './FlagTeam';
 import { Match } from '@/types';
 import { CaretDown, CaretUp, Table } from '@phosphor-icons/react';
 import { formatMatchDate, formatMatchTime } from '@/lib/date';
+import MatchCommentsSection from './MatchCommentsSection';
 
 // ── Standings ─────────────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ function MatchAccordionContent({
 }) {
   const profileMap = new Map(allProfiles.map((p) => [p.id, p]));
   const matchStarted = new Date(match.match_time) <= new Date();
+  const isLive = matchStarted && (match.home_score === null || match.away_score === null);
   const predictedUserIds = new Set(matchPredictions.map((p) => p.user_id));
   const missingProfiles = matchStarted ? [] : allProfiles.filter((p) => !predictedUserIds.has(p.id));
 
@@ -267,6 +269,11 @@ function MatchAccordionContent({
           ))}
         </div>
       )}
+      <MatchCommentsSection
+        matchId={match.id}
+        canComment={isLive}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import './globals.css';
 import Navbar from '@/components/ui/Navbar';
 import BottomNav from '@/components/ui/BottomNav';
 import Toast from '@/components/ui/Toast';
+import WhatsAppGroupButton from '@/components/ui/WhatsAppGroupButton';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -78,6 +79,7 @@ export default function RootLayout({
           {children}
         </main>
         <BottomNav />
+        <WhatsAppGroupButton />
         <Toast />
       </body>
     </html>
