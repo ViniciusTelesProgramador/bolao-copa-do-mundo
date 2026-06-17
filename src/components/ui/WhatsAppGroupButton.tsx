@@ -1,9 +1,8 @@
 'use client';
 
-const WA_URL = process.env.NEXT_PUBLIC_WHATSAPP_GROUP_URL;
+const WA_URL = process.env.NEXT_PUBLIC_WHATSAPP_GROUP_URL || 'https://chat.whatsapp.com/DxZFZSFbj6QCFN1LwWNJ9E?mode=gi_t';
 
 export default function WhatsAppGroupButton() {
-  if (!WA_URL) return null;
 
   return (
     <a
