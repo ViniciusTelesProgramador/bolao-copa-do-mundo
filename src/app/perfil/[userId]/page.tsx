@@ -17,20 +17,34 @@ interface Props {
 
 export default async function PublicProfilePage({ params }: Props) {
   const { userId } = params;
-  const supabase = await createClient();
+  console.log('[PublicProfile] userId from params:', userId);
 
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  console.log('[PublicProfile] current user id:', user?.id);
+
   if (user?.id === userId) redirect('/perfil');
 
   const admin = createAdminClient();
 
-  const { data: profile } = await admin
+  const { data: profile, error: profileError } = await admin
     .from('profiles')
     .select('name, avatar_url, artilheiro_guess, artilheiro_points')
     .eq('id', userId)
     .single();
 
-  if (!profile) notFound();
+  console.log('[PublicProfile] profile:', profile, 'error:', profileError);
+
+  if (!profile) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-20 text-center">
+        <p className="text-2xl font-black text-primary mb-2">Usuário não encontrado</p>
+        <p className="text-sm text-secondary mb-4">ID buscado: <code className="bg-muted px-2 py-0.5 rounded">{userId || '(vazio)'}</code></p>
+        {profileError && <p className="text-xs text-red-400">Erro: {profileError.message}</p>}
+        <a href="/" className="mt-6 inline-block text-accent-custom font-bold text-sm">← Voltar ao ranking</a>
+      </div>
+    );
+  }
 
   const ranking = await getRanking();
   const rankPosition = ranking.findIndex(r => r.user_id === userId) + 1;
