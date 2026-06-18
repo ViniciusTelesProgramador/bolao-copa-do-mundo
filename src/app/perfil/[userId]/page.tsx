@@ -1,6 +1,7 @@
 import React from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getRanking } from '@/app/actions';
 import Link from 'next/link';
 import PointsEvolutionChart, { PointsEvolutionEntry } from '@/components/ui/PointsEvolutionChart';
@@ -21,7 +22,9 @@ export default async function PublicProfilePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (user?.id === userId) redirect('/perfil');
 
-  const { data: profile } = await supabase
+  const admin = createAdminClient();
+
+  const { data: profile } = await admin
     .from('profiles')
     .select('name, avatar_url, artilheiro_guess, artilheiro_points')
     .eq('id', userId)
@@ -34,7 +37,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const rankEntry = ranking.find(r => r.user_id === userId);
   const aproveitamento = rankEntry?.aproveitamento ?? 0;
 
-  const { data: allPredsData } = await supabase
+  const { data: allPredsData } = await admin
     .from('predictions')
     .select(`
       id, home_score, away_score, points, created_at,
@@ -81,7 +84,7 @@ export default async function PublicProfilePage({ params }: Props) {
     };
   });
 
-  const { count: totalMatchesCount } = await supabase
+  const { count: totalMatchesCount } = await admin
     .from('matches')
     .select('id', { count: 'exact', head: true });
 
