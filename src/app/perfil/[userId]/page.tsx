@@ -24,17 +24,31 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const admin = createAdminClient();
 
-  const { data: profile } = await admin
+  const { data: rows, error: profileErr } = await admin
     .from('profiles')
     .select('name, avatar_url, artilheiro_guess, artilheiro_points')
     .eq('id', userId)
-    .single();
+    .limit(1);
+
+  console.log('[PublicProfile] userId:', userId, 'rows:', rows, 'error:', profileErr);
+
+  const profile = rows?.[0] ?? null;
 
   if (!profile) {
+    // Fallback: tenta buscar sem filtro para verificar se a tabela está acessível
+    const { data: allRows, error: allErr } = await admin
+      .from('profiles')
+      .select('id, name')
+      .limit(3);
+    console.log('[PublicProfile] fallback check - profiles sample:', allRows, 'error:', allErr);
+
     return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <p className="text-2xl font-black text-primary mb-2">Usuário não encontrado</p>
-        <Link href="/" className="mt-6 inline-block text-accent-custom font-bold text-sm">← Voltar ao ranking</Link>
+      <div className="max-w-lg mx-auto px-4 py-20 text-center space-y-3">
+        <p className="text-2xl font-black text-primary">Usuário não encontrado</p>
+        <p className="text-xs text-secondary font-mono">ID: {userId}</p>
+        <p className="text-xs text-secondary font-mono">Erro: {profileErr?.message ?? 'nenhum erro, mas 0 rows'}</p>
+        <p className="text-xs text-secondary font-mono">Profiles na tabela: {allRows?.map(r => r.id).join(', ') ?? 'erro: ' + allErr?.message}</p>
+        <Link href="/" className="mt-4 inline-block text-accent-custom font-bold text-sm">← Voltar ao ranking</Link>
       </div>
     );
   }
