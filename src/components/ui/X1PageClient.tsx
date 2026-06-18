@@ -243,15 +243,20 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
       {active.length > 0 && (
         <section className="mb-8">
           <h2 className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
             Em andamento ({active.length})
           </h2>
           <div className="space-y-3">
             {active.map(c => {
               const opp = getOpponent(c);
+              const me = myPred(c);
+              const them = oppPred(c);
+              const matchLive = new Date(c.match.match_time) <= new Date();
+
               return (
                 <div key={c.id} className="bg-card border border-green-500/20 rounded-2xl p-4">
-                  <div className="flex items-center gap-3">
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="flex items-center gap-1 shrink-0">
                       <Avatar profile={c.challenger_id === currentUserId ? c.challenger : c.challenged} size={8} />
                       <span className="text-[10px] font-black text-secondary/60 px-1">VS</span>
@@ -261,8 +266,27 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
                       <p className="font-black text-sm text-primary">Você vs {opp.name}</p>
                       <MatchLabel match={c.match} />
                     </div>
-                    <span className="text-[10px] font-black text-secondary bg-muted px-2 py-1 rounded-lg shrink-0">🔒 Lacrado</span>
+                    {matchLive ? (
+                      <span className="text-[10px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg shrink-0 animate-pulse">🔴 Ao vivo</span>
+                    ) : (
+                      <span className="text-[10px] font-black text-secondary bg-muted px-2 py-1 rounded-lg shrink-0">🔒 Lacrado</span>
+                    )}
                   </div>
+
+                  {/* Predictions revealed once match starts */}
+                  {matchLive && (
+                    <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-border-custom/40">
+                      <div className="bg-accent-custom/5 border border-accent-custom/20 rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] font-black text-secondary uppercase block">Seu palpite</span>
+                        <span className="text-lg font-black text-accent-custom mt-0.5 block">{me.home} x {me.away}</span>
+                      </div>
+                      <div className="bg-muted/50 border border-border-custom rounded-xl p-2.5 text-center">
+                        <span className="text-[9px] font-black text-secondary uppercase block">Palpite de {opp.name.split(' ')[0]}</span>
+                        <span className="text-lg font-black text-primary mt-0.5 block">{them.home} x {them.away}</span>
+                      </div>
+                      <p className="col-span-2 text-center text-[10px] text-secondary font-bold">⏳ Aguardando resultado para calcular o vencedor</p>
+                    </div>
+                  )}
                 </div>
               );
             })}
