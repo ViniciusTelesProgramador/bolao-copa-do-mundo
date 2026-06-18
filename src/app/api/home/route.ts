@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getRanking } from '@/app/actions';
 import { isSameDayInSaoPaulo, getDateKeySaoPaulo } from '@/lib/date';
 import { Match, Prediction } from '@/types';
@@ -8,10 +9,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: matchesData } = await supabase
+  const { data: matchesData } = await admin
     .from('matches')
     .select('*')
     .order('match_time', { ascending: true });
@@ -28,7 +30,7 @@ export async function GET() {
 
   const ranking = await getRanking();
 
-  const { data: scoredPredictionsData } = await supabase
+  const { data: scoredPredictionsData } = await admin
     .from('predictions')
     .select('user_id, points, match:matches ( match_time )')
     .not('points', 'is', null);

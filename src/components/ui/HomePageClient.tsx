@@ -121,7 +121,7 @@ export default function HomePageClient() {
               </Link>
             )}
             <Link
-              href="#ranking"
+              href="/ranking"
               className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-muted hover:bg-border-custom/50 text-primary font-bold rounded-2xl border border-border-custom transition-all duration-200 min-h-[48px]"
             >
               Ver Classificação

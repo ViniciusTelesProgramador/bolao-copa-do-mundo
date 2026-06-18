@@ -20,6 +20,14 @@ export const metadata: Metadata = {
   description: 'Palpite nos jogos da Copa do Mundo 2026, acumule pontos e dispute com seus amigos no ranking geral!',
   keywords: ['copa do mundo', 'bolão', 'futebol', 'amigos', 'palpites', '2026'],
   metadataBase: new URL(siteUrl),
+  icons: {
+    icon: [
+      { url: '/favico/favicon.ico', sizes: 'any' },
+      { url: '/favico/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favico/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: [{ url: '/favico/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title: 'Bolão Copa do Mundo 2026 ⚽',
     description: 'Palpite nos jogos, acumule pontos e vença seus amigos na maior Copa do Mundo de todos os tempos!',
@@ -27,13 +35,13 @@ export const metadata: Metadata = {
     siteName: 'Bolão Copa 2026',
     locale: 'pt_BR',
     type: 'website',
-    images: [{ url: '/og-image', width: 1200, height: 630, alt: 'Bolão Copa do Mundo 2026' }],
+    images: [{ url: '/images/ogggg.png', width: 1200, height: 630, alt: 'Bolão Copa do Mundo 2026' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Bolão Copa do Mundo 2026 ⚽',
     description: 'Palpite nos jogos e dispute com seus amigos!',
-    images: ['/og-image'],
+    images: ['/images/ogggg.png'],
   },
   appleWebApp: {
     capable: true,
