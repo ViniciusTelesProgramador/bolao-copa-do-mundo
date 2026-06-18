@@ -12,11 +12,11 @@ import AvatarExpandable from '@/components/ui/AvatarExpandable';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-  params: { userId: string };
+  params: Promise<{ userId: string }>;
 }
 
 export default async function PublicProfilePage({ params }: Props) {
-  const { userId } = params;
+  const { userId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
