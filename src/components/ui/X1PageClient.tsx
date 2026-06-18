@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { Sword, X, Plus, Clock, CheckCircle } from '@phosphor-icons/react';
 import { createChallenge, acceptChallenge, rejectOrCancelChallenge } from '@/app/actions';
 import { formatMatchDateTime } from '@/lib/date';
+import { getCountryCode } from '@/components/ui/FlagTeam';
 import { ChallengeWithDetails, ChallengeProfile } from '@/types';
 
 interface MatchBasic {
@@ -37,13 +38,30 @@ function Avatar({ profile, size = 8 }: { profile: ChallengeProfile; size?: numbe
   );
 }
 
-function MatchLabel({ match }: { match: { home_team: string; away_team: string; match_time: string } }) {
+function FlagImg({ flag, name }: { flag: string; name: string }) {
+  const code = getCountryCode(flag, name);
+  return code ? (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      alt={name}
+      className="w-5 h-3.5 object-cover rounded-[2px] border border-border-custom/30 shrink-0 inline-block"
+    />
+  ) : (
+    <span className="text-sm leading-none inline-block">{flag}</span>
+  );
+}
+
+function MatchLabel({ match }: { match: { home_team: string; away_team: string; home_flag: string; away_flag: string; match_time: string } }) {
   return (
-    <p className="text-[11px] text-secondary font-bold mt-0.5">
-      {match.home_team} x {match.away_team}
-      <span className="mx-1 opacity-40">•</span>
-      {formatMatchDateTime(match.match_time)}
-    </p>
+    <div className="flex items-center gap-1 flex-wrap mt-0.5">
+      <FlagImg flag={match.home_flag} name={match.home_team} />
+      <span className="text-[11px] text-secondary font-bold">{match.home_team}</span>
+      <span className="text-[11px] text-secondary/50 font-bold">x</span>
+      <FlagImg flag={match.away_flag} name={match.away_team} />
+      <span className="text-[11px] text-secondary font-bold">{match.away_team}</span>
+      <span className="text-[11px] text-secondary/40 font-bold mx-0.5">•</span>
+      <span className="text-[11px] text-secondary/70 font-bold">{formatMatchDateTime(match.match_time)}</span>
+    </div>
   );
 }
 
