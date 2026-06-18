@@ -724,7 +724,7 @@ export async function registerUser(nickname: string, password: string) {
 
     const email = `${sanitized}@bolao.interno`;
 
-    const { error } = await supabase.auth.admin.createUser({
+    const { data: createdUser, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -736,6 +736,13 @@ export async function registerUser(nickname: string, password: string) {
         return { success: false, error: 'Esse apelido já está em uso. Escolha outro.' };
       }
       return { success: false, error: error.message };
+    }
+
+    if (createdUser?.user) {
+      await supabase.from('profiles').insert({
+        id: createdUser.user.id,
+        name: nickname.trim(),
+      });
     }
 
     return { success: true };

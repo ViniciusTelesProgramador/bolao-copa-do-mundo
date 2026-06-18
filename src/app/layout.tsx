@@ -6,6 +6,7 @@ import BottomNav from '@/components/ui/BottomNav';
 import Toast from '@/components/ui/Toast';
 import WhatsAppGroupButton from '@/components/ui/WhatsAppGroupButton';
 import ChallengeNotificationBanner from '@/components/ui/ChallengeNotificationBanner';
+import QueryProvider from '@/components/providers/QueryProvider';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -75,14 +76,16 @@ export default function RootLayout({
         />
       </head>
       <body className={`${outfit.className} min-h-full flex flex-col bg-base text-primary selection:bg-accent-custom selection:text-slate-950 pb-16 sm:pb-0`}>
-        <Navbar />
-        <ChallengeNotificationBanner />
-        <main className="flex-grow">
-          {children}
-        </main>
-        <BottomNav />
-        <WhatsAppGroupButton />
-        <Toast />
+        <QueryProvider>
+          <Navbar />
+          <ChallengeNotificationBanner />
+          <main className="flex-grow">
+            {children}
+          </main>
+          <BottomNav />
+          <WhatsAppGroupButton />
+          <Toast />
+        </QueryProvider>
       </body>
     </html>
   );
