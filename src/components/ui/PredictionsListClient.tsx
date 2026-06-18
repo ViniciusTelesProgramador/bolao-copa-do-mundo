@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import FlagTeam, { getCountryCode } from './FlagTeam';
 import { Match } from '@/types';
 import { CaretDown, CaretUp, Table } from '@phosphor-icons/react';
@@ -217,7 +218,10 @@ function MatchAccordionContent({
               isSelf ? 'bg-accent-custom/5 font-semibold' : ''
             }`}
           >
-            <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href={isSelf ? '/perfil' : `/perfil/${pred.user_id}`}
+              className="flex items-center gap-3 min-w-0 hover:opacity-75 transition-opacity"
+            >
               {avatarUrl ? (
                 <img src={avatarUrl} alt={pred.user_name} className="w-7 h-7 rounded-full object-cover shrink-0 border border-border-custom" />
               ) : (
@@ -236,7 +240,7 @@ function MatchAccordionContent({
                   </span>
                 )}
               </span>
-            </div>
+            </Link>
             <div className="flex items-center gap-2 shrink-0">
               {scoreVisible ? (
                 <span

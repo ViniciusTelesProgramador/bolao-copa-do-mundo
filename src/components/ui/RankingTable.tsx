@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { RankingEntry } from '@/types';
 import { Medal, Trophy } from '@phosphor-icons/react';
 
@@ -116,7 +117,10 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
 
                   {/* Participante (Avatar + Nome + Palpites no Mobile) */}
                   <td className="py-3 px-2 font-bold text-sm min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
+                    <Link
+                      href={isCurrentUser ? '/perfil' : `/perfil/${entry.user_id}`}
+                      className="flex items-center gap-2 min-w-0 hover:opacity-75 transition-opacity"
+                    >
                       {entry.avatar_url ? (
                         <img
                           src={entry.avatar_url}
@@ -155,7 +159,7 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
                           {entry.predictions_count === 0 ? 'sem palpites' : `${entry.aproveitamento}% de aproveitamento`}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   </td>
 
                   {/* Aproveitamento (desktop only) */}

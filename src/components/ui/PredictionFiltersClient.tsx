@@ -37,6 +37,7 @@ interface PredictionItem {
 
 interface PredictionFiltersClientProps {
   predictions: PredictionItem[];
+  readonly?: boolean;
 }
 
 const STATUS_TABS: { key: StatusFilter; label: string; activeColor: string }[] = [
@@ -54,7 +55,7 @@ const TIPO_TABS: { key: TipoFilter; label: string; pts: string; color: string }[
   { key: 'erro',      label: 'Erro',      pts: '0pt',  color: 'text-red-400' },
 ];
 
-export default function PredictionFiltersClient({ predictions }: PredictionFiltersClientProps) {
+export default function PredictionFiltersClient({ predictions, readonly }: PredictionFiltersClientProps) {
   const [status, setStatus] = useState<StatusFilter>('todos');
   const [tipo, setTipo] = useState<TipoFilter>('todos');
   const [ordem, setOrdem] = useState<Ordem>('asc');
@@ -99,6 +100,7 @@ export default function PredictionFiltersClient({ predictions }: PredictionFilte
 
   // Confete ao detectar um placar exato (3 pts) ainda não celebrado nesta máquina
   useEffect(() => {
+    if (readonly) return;
     const exactHits = predictions.filter((p) => p.points === 3);
     if (exactHits.length === 0) return;
 
@@ -231,13 +233,15 @@ export default function PredictionFiltersClient({ predictions }: PredictionFilte
                 <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end border-t sm:border-t-0 border-border-custom/40 pt-3 sm:pt-0 shrink-0">
                   {isScored ? (
                     <PointsBadge points={pred.points} />
-                  ) : (
+                  ) : !readonly ? (
                     <Link
                       href={`/palpites?match=${match.id}`}
                       className="min-h-[44px] px-4 flex items-center justify-center bg-muted hover:bg-border-custom text-primary text-xs font-bold rounded-xl border border-border-custom transition-all"
                     >
                       Editar Palpite
                     </Link>
+                  ) : (
+                    <span className="text-[10px] text-secondary font-bold italic">Aguardando resultado</span>
                   )}
                 </div>
               </div>
