@@ -9,17 +9,29 @@ import { createClient } from '@/lib/supabase/client';
 export default function BottomNav() {
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pendingChallenges, setPendingChallenges] = useState(0);
   const supabase = createClient();
 
   useEffect(() => {
     async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser();
       setIsAuthenticated(!!user);
+      if (user) {
+        try {
+          const { count } = await supabase
+            .from('challenges')
+            .select('id', { count: 'exact', head: true })
+            .eq('challenged_id', user.id)
+            .eq('status', 'pending');
+          setPendingChallenges(count ?? 0);
+        } catch {}
+      }
     }
     checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session?.user);
+      if (!session?.user) setPendingChallenges(0);
     });
 
     return () => {
@@ -44,15 +56,23 @@ export default function BottomNav() {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = pathname === tab.href;
+          const badge = tab.href === '/x1' && pendingChallenges > 0 ? pendingChallenges : 0;
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-col items-center justify-center flex-1 h-full min-h-[48px] min-w-[48px] gap-1 focus:outline-none transition-colors duration-200 ${
+              className={`relative flex flex-col items-center justify-center flex-1 h-full min-h-[48px] min-w-[48px] gap-1 focus:outline-none transition-colors duration-200 ${
                 isActive ? 'text-accent-custom' : 'text-secondary hover:text-primary'
               }`}
             >
-              <Icon size={22} weight={isActive ? 'bold' : 'regular'} />
+              <div className="relative">
+                <Icon size={22} weight={isActive ? 'bold' : 'regular'} />
+                {badge > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center leading-none">
+                    {badge > 9 ? '9+' : badge}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-bold uppercase tracking-wider">
                 {tab.name}
               </span>

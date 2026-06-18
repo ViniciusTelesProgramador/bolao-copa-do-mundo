@@ -208,7 +208,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
 
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, name, avatar_url, artilheiro_guess, artilheiro_points');
+      .select('id, name, avatar_url, artilheiro_guess, artilheiro_points, x1_points');
 
     if (profilesError || !profiles) {
       console.error('Erro ao buscar perfis:', profilesError);
@@ -256,7 +256,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
         avatar_url: p.avatar_url ?? null,
         artilheiro_guess: p.artilheiro_guess ?? null,
         artilheiro_points: p.artilheiro_points || 0,
-        total_points: stats.total_points,
+        total_points: Math.max(0, stats.total_points + (p.x1_points || 0)),
         predictions_count: stats.predictions_count,
         acertos_count: stats.acertos_count,
         aproveitamento,
@@ -774,5 +774,202 @@ export async function upsertMatchComment(
 
   if (error) return { error: error.message };
   return {};
+}
+
+// ── X1 Desafios ───────────────────────────────────────────────────────────────
+
+function calcX1Points(ph: number, pa: number, ah: number, aa: number): number {
+  if (ph === ah && pa === aa) return 3;
+  const pd = ph - pa, ad = ah - aa;
+  if (pd === ad) return 2;
+  if (Math.sign(pd) === Math.sign(ad)) return 1;
+  return 0;
+}
+
+export async function createChallenge(
+  challengedId: string,
+  matchId: string,
+  homeScore: number,
+  awayScore: number,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Não autenticado' };
+  if (user.id === challengedId) return { error: 'Você não pode se desafiar' };
+  if (homeScore < 0 || awayScore < 0 || homeScore > 20 || awayScore > 20) {
+    return { error: 'Palpite inválido' };
+  }
+
+  const { data: match } = await supabase
+    .from('matches').select('match_time').eq('id', matchId).single();
+  if (!match || new Date(match.match_time) <= new Date()) {
+    return { error: 'Este jogo já começou ou não existe' };
+  }
+
+  const { count } = await supabase
+    .from('challenges')
+    .select('id', { count: 'exact', head: true })
+    .eq('challenger_id', user.id)
+    .in('status', ['pending', 'accepted']);
+  if ((count ?? 0) >= 2) {
+    return { error: 'Você já tem 2 desafios ativos. Aguarde um resultado para desafiar novamente.' };
+  }
+
+  const { error } = await supabase.from('challenges').insert({
+    challenger_id: user.id,
+    challenged_id: challengedId,
+    match_id: matchId,
+    challenger_home: homeScore,
+    challenger_away: awayScore,
+  });
+
+  if (error) {
+    if (error.code === '23505') return { error: 'Já existe um desafio entre vocês para este jogo' };
+    return { error: error.message };
+  }
+  revalidatePath('/x1');
+  return {};
+}
+
+export async function acceptChallenge(
+  challengeId: string,
+  homeScore: number,
+  awayScore: number,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Não autenticado' };
+  if (homeScore < 0 || awayScore < 0 || homeScore > 20 || awayScore > 20) {
+    return { error: 'Palpite inválido' };
+  }
+
+  const { data: challenge } = await supabase
+    .from('challenges')
+    .select('id, match_id')
+    .eq('id', challengeId)
+    .eq('challenged_id', user.id)
+    .eq('status', 'pending')
+    .single();
+  if (!challenge) return { error: 'Desafio não encontrado ou já respondido' };
+
+  const { data: match } = await supabase
+    .from('matches').select('match_time').eq('id', challenge.match_id).single();
+  if (!match || new Date(match.match_time) <= new Date()) {
+    return { error: 'O jogo já começou, não é possível aceitar' };
+  }
+
+  const { error } = await supabase.from('challenges').update({
+    challenged_home: homeScore,
+    challenged_away: awayScore,
+    status: 'accepted',
+  }).eq('id', challengeId);
+
+  if (error) return { error: error.message };
+  revalidatePath('/x1');
+  return {};
+}
+
+export async function rejectOrCancelChallenge(
+  challengeId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Não autenticado' };
+
+  const { error } = await supabase.from('challenges')
+    .update({ status: 'rejected' })
+    .eq('id', challengeId)
+    .or(`challenger_id.eq.${user.id},challenged_id.eq.${user.id}`)
+    .eq('status', 'pending');
+
+  if (error) return { error: error.message };
+  revalidatePath('/x1');
+  return {};
+}
+
+export async function resolveX1Challenges(): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const admin = createAdminClient();
+    const now = new Date();
+
+    const { data: challenges } = await admin
+      .from('challenges')
+      .select('id, status, challenger_id, challenged_id, challenger_home, challenger_away, challenged_home, challenged_away, match_id')
+      .in('status', ['pending', 'accepted']);
+
+    if (!challenges || challenges.length === 0) return;
+
+    const matchIds = [...new Set(challenges.map((c: any) => c.match_id))];
+    const { data: matches } = await admin
+      .from('matches').select('id, match_time, home_score, away_score').in('id', matchIds);
+
+    const matchMap = new Map((matches ?? []).map((m: any) => [m.id, m]));
+
+    const toExpire: string[] = [];
+    const toResolve: any[] = [];
+
+    for (const c of challenges) {
+      const m = matchMap.get((c as any).match_id) as any;
+      if (!m) continue;
+      if ((c as any).status === 'pending' && new Date(m.match_time) <= now) {
+        toExpire.push((c as any).id);
+      } else if ((c as any).status === 'accepted' && m.home_score !== null && m.away_score !== null) {
+        toResolve.push({ ...c, matchData: m });
+      }
+    }
+
+    if (toExpire.length > 0) {
+      await admin.from('challenges').update({ status: 'expired' }).in('id', toExpire);
+    }
+
+    for (const c of toResolve) {
+      if (c.challenger_home === null || c.challenged_home === null) continue;
+
+      const cPts = calcX1Points(c.challenger_home, c.challenger_away, c.matchData.home_score, c.matchData.away_score);
+      const dPts = calcX1Points(c.challenged_home, c.challenged_away, c.matchData.home_score, c.matchData.away_score);
+
+      let result: string;
+      let winnerId: string | null = null;
+      let loserId: string | null = null;
+
+      if (cPts > dPts) {
+        result = 'challenger_won';
+        winnerId = c.challenger_id;
+        loserId = c.challenged_id;
+      } else if (dPts > cPts) {
+        result = 'challenged_won';
+        winnerId = c.challenged_id;
+        loserId = c.challenger_id;
+      } else {
+        result = 'tie';
+      }
+
+      let pointsTransferred = 0;
+      if (winnerId && loserId) {
+        pointsTransferred = 4;
+        await admin.rpc('add_x1_points', { target_user_id: winnerId, delta: 4 });
+        await admin.rpc('add_x1_points', { target_user_id: loserId, delta: -4 });
+      }
+
+      await admin.from('challenges').update({
+        status: 'completed',
+        result,
+        challenger_match_points: cPts,
+        challenged_match_points: dPts,
+        points_transferred: pointsTransferred,
+      }).eq('id', c.id);
+    }
+
+    if (toExpire.length > 0 || toResolve.length > 0) {
+      revalidatePath('/x1');
+      revalidatePath('/');
+    }
+  } catch (e) {
+    console.error('resolveX1Challenges error:', e);
+  }
 }
 

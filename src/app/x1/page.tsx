@@ -1,62 +1,51 @@
-import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import HeadToHeadClient from '@/components/ui/HeadToHeadClient';
-import { Match } from '@/types';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveX1Challenges } from '@/app/actions';
+import X1PageClient from '@/components/ui/X1PageClient';
+import { ChallengeWithDetails } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function X1Page() {
   const supabase = await createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Só busca partidas que já têm resultado
-  const { data: matchesData } = await supabase
-    .from('matches')
-    .select('*')
-    .not('home_score', 'is', null)
-    .not('away_score', 'is', null)
-    .order('match_time', { ascending: true });
+  await resolveX1Challenges();
 
-  const matches: Match[] = matchesData || [];
+  const admin = createAdminClient();
 
-  const { data: profilesData } = await supabase
+  const { data: challengesData } = await admin
+    .from('challenges')
+    .select(`
+      *,
+      challenger:profiles!challenger_id(id, name, avatar_url),
+      challenged:profiles!challenged_id(id, name, avatar_url),
+      match:matches(id, home_team, away_team, home_flag, away_flag, match_time, home_score, away_score, stage)
+    `)
+    .or(`challenger_id.eq.${user.id},challenged_id.eq.${user.id}`)
+    .order('created_at', { ascending: false });
+
+  const { data: allProfiles } = await admin
     .from('profiles')
     .select('id, name, avatar_url')
-    .order('name', { ascending: true });
+    .neq('id', user.id)
+    .order('name');
 
-  const profiles = profilesData || [];
-
-  const matchIds = matches.map((m) => m.id);
-  let predictions: { id: string; match_id: string; user_id: string; home_score: number; away_score: number; points: number | null }[] = [];
-
-  if (matchIds.length > 0) {
-    const { data: predsData } = await supabase
-      .from('predictions')
-      .select('id, match_id, user_id, home_score, away_score, points')
-      .in('match_id', matchIds);
-    predictions = (predsData || []) as typeof predictions;
-  }
+  const now = new Date().toISOString();
+  const { data: upcomingMatches } = await admin
+    .from('matches')
+    .select('id, home_team, away_team, home_flag, away_flag, match_time, stage')
+    .gt('match_time', now)
+    .order('match_time', { ascending: true });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
-      <div className="mb-8 border-b border-border-custom/60 pb-5">
-        <h1 className="text-2xl sm:text-4xl font-black text-primary uppercase tracking-wider">
-          X1 Cara a Cara
-        </h1>
-        <p className="text-xs sm:text-sm text-secondary mt-2 font-medium">
-          Compare o desempenho de dois participantes nos jogos já encerrados.
-        </p>
-      </div>
-
-      <HeadToHeadClient
-        profiles={profiles}
-        matches={matches}
-        predictions={predictions}
-        currentUserId={user.id}
-      />
-    </div>
+    <X1PageClient
+      currentUserId={user.id}
+      challenges={(challengesData ?? []) as unknown as ChallengeWithDetails[]}
+      allProfiles={allProfiles ?? []}
+      upcomingMatches={upcomingMatches ?? []}
+    />
   );
 }
