@@ -936,11 +936,12 @@ export async function resolveX1Challenges(): Promise<void> {
       let winnerId: string | null = null;
       let loserId: string | null = null;
 
-      if (cPts > dPts) {
+      // Only an exact score (3 pts) wins the X1
+      if (cPts === 3 && dPts !== 3) {
         result = 'challenger_won';
         winnerId = c.challenger_id;
         loserId = c.challenged_id;
-      } else if (dPts > cPts) {
+      } else if (dPts === 3 && cPts !== 3) {
         result = 'challenged_won';
         winnerId = c.challenged_id;
         loserId = c.challenger_id;
