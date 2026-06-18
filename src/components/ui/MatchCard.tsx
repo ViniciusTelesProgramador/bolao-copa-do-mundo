@@ -141,8 +141,9 @@ export default function MatchCard({ match, prediction, isAuthenticated, matchNum
   };
 
   return (
-    <div
-      className={`border-2 ${cardBorderClass} ${cardBgClass} rounded-2xl p-5 flex flex-col justify-between shadow-lg hover:scale-[1.01] active:scale-[0.99] sm:hover:scale-[1.02] sm:active:scale-[1.0] transition-all duration-300 min-w-0`}
+    <Link
+      href={`/partida/${match.id}`}
+      className={`block border-2 ${cardBorderClass} ${cardBgClass} rounded-2xl p-5 flex flex-col justify-between shadow-lg hover:scale-[1.01] active:scale-[0.99] sm:hover:scale-[1.02] sm:active:scale-[1.0] transition-all duration-300 min-w-0 cursor-pointer`}
     >
       {/* Header do Card */}
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold mb-4 pb-3 border-b border-border-custom/50">
@@ -231,19 +232,19 @@ export default function MatchCard({ match, prediction, isAuthenticated, matchNum
           ) : !isStarted ? (
             isAuthenticated ? (
               <button
-                onClick={handleOpenModal}
+                onClick={e => { e.preventDefault(); handleOpenModal(); }}
                 className="min-h-[48px] px-4 bg-accent-custom hover:bg-accent-hover text-slate-950 text-xs font-bold rounded-xl shadow-md transition-all duration-200 cursor-pointer flex items-center gap-1.5"
               >
                 <NotePencil size={14} />
                 {hasPrediction ? 'Editar' : 'Palpitar'}
               </button>
             ) : (
-              <Link
-                href="/login"
-                className="min-h-[48px] px-4 flex items-center justify-center bg-muted hover:bg-border-custom text-slate-900 dark:text-slate-50 text-xs font-bold rounded-xl border border-border-custom transition-colors duration-200"
+              <button
+                onClick={e => { e.preventDefault(); router.push('/login'); }}
+                className="min-h-[48px] px-4 flex items-center justify-center bg-muted hover:bg-border-custom text-slate-900 dark:text-slate-50 text-xs font-bold rounded-xl border border-border-custom transition-colors duration-200 cursor-pointer"
               >
                 Palpitar
-              </Link>
+              </button>
             )
           ) : (
             <span className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-500 dark:text-slate-400 font-bold uppercase select-none bg-muted/50 rounded-lg border border-border-custom/50">
@@ -401,6 +402,6 @@ export default function MatchCard({ match, prediction, isAuthenticated, matchNum
             document.body
           )
         : null}
-    </div>
+    </Link>
   );
 }

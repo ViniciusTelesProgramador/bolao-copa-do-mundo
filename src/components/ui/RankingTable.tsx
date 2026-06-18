@@ -182,10 +182,8 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
                   {/* Pontos */}
                   <td className="py-3 px-4 text-right">
                     <span
-                      style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}
-                      className={`text-base font-black tracking-wider ${
-                        isCurrentUser ? 'text-accent-custom' : ''
-                      }`}
+                      style={{ color: isCurrentUser ? 'var(--accent)' : 'var(--text-primary)' }}
+                      className="text-base font-black tracking-wider"
                     >
                       {entry.total_points}
                     </span>

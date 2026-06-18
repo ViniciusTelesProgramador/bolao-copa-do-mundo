@@ -204,9 +204,10 @@ export async function saveMatchResult(
  */
 export async function getRanking(): Promise<RankingEntry[]> {
   try {
-    const supabase = await createClient();
+    // Admin client bypassa RLS — dados de ranking são públicos
+    const admin = createAdminClient();
 
-    const { data: profiles, error: profilesError } = await supabase
+    const { data: profiles, error: profilesError } = await admin
       .from('profiles')
       .select('id, name, avatar_url, artilheiro_guess, artilheiro_points, x1_points');
 
@@ -216,7 +217,7 @@ export async function getRanking(): Promise<RankingEntry[]> {
     }
 
     // 2. Buscar todas as predictions que possuem pontos definidos
-    const { data: predictions, error: predictionsError } = await supabase
+    const { data: predictions, error: predictionsError } = await admin
       .from('predictions')
       .select('user_id, points')
       .not('points', 'is', null);
@@ -724,7 +725,7 @@ export async function registerUser(nickname: string, password: string) {
 
     const email = `${sanitized}@bolao.interno`;
 
-    const { error } = await supabase.auth.admin.createUser({
+    const { data: createdUser, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -736,6 +737,13 @@ export async function registerUser(nickname: string, password: string) {
         return { success: false, error: 'Esse apelido já está em uso. Escolha outro.' };
       }
       return { success: false, error: error.message };
+    }
+
+    if (createdUser?.user) {
+      await supabase.from('profiles').insert({
+        id: createdUser.user.id,
+        name: nickname.trim(),
+      });
     }
 
     return { success: true };
