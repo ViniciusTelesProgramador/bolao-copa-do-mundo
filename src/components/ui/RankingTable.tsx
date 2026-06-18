@@ -2,8 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { RankingEntry } from '@/types';
 import { Medal, Trophy } from '@phosphor-icons/react';
+
+const ShareRankingButton = dynamic(() => import('./ShareRankingButton'), { ssr: false });
 
 interface RankingTableProps {
   ranking: RankingEntry[];
@@ -43,11 +46,14 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
           <Trophy size={18} className="text-accent-custom shrink-0" />
           Classificação Geral
         </h3>
-        {totalMatches !== undefined && (
-          <span className="text-[9px] text-secondary font-black uppercase tracking-wider select-none shrink-0">
-            {totalMatches} Jogos
-          </span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <ShareRankingButton ranking={ranking} />
+          {totalMatches !== undefined && (
+            <span className="text-[9px] text-secondary font-black uppercase tracking-wider select-none">
+              {totalMatches} Jogos
+            </span>
+          )}
+        </div>
       </div>
       
       <div className="overflow-x-hidden">
