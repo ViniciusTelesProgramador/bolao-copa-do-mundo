@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Sword, X, Plus, Clock, CheckCircle } from '@phosphor-icons/react';
+import { Sword, X, Plus, Clock, CheckCircle, Fire } from '@phosphor-icons/react';
 import { createChallenge, acceptChallenge, rejectOrCancelChallenge } from '@/app/actions';
 import { formatMatchDateTime } from '@/lib/date';
 import { getCountryCode } from '@/components/ui/FlagTeam';
@@ -22,6 +22,7 @@ interface X1PageClientProps {
   challenges: ChallengeWithDetails[];
   allProfiles: ChallengeProfile[];
   upcomingMatches: MatchBasic[];
+  arenaFeed: ChallengeWithDetails[];
 }
 
 const COLORS = ['bg-red-500','bg-blue-500','bg-emerald-500','bg-amber-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-cyan-500'];
@@ -81,11 +82,190 @@ function ScoreInput({ value, onChange, label }: { value: number; onChange: (v: n
   );
 }
 
-export default function X1PageClient({ currentUserId, challenges, allProfiles, upcomingMatches }: X1PageClientProps) {
+// ── Arena Feed (public) ────────────────────────────────────────────────────────
+
+function ArenaCard({ c }: { c: ChallengeWithDetails }) {
+  const matchLive = new Date(c.match.match_time) <= new Date();
+  const isCompleted = c.status === 'completed';
+
+  // Determine winner label
+  let winnerLabel = '';
+  let winnerColor = '';
+  if (isCompleted) {
+    if (c.result === 'tie') {
+      winnerLabel = '🤝 Empate — sem transferência';
+      winnerColor = 'text-secondary';
+    } else if (c.result === 'challenger_won') {
+      winnerLabel = `✅ ${c.challenger.name.split(' ')[0]} ganhou +${c.points_transferred}pts`;
+      winnerColor = 'text-green-500';
+    } else if (c.result === 'challenged_won') {
+      winnerLabel = `✅ ${c.challenged.name.split(' ')[0]} ganhou +${c.points_transferred}pts`;
+      winnerColor = 'text-green-500';
+    }
+  }
+
+  return (
+    <div className={`bg-card border rounded-2xl p-3.5 ${
+      isCompleted ? 'border-border-custom/50' :
+      matchLive ? 'border-green-500/30 shadow-green-500/5 shadow-lg' :
+      'border-border-custom/60'
+    }`}>
+      {/* Status badge */}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <FlagImg flag={c.match.home_flag} name={c.match.home_team} />
+          <span className="text-[10px] text-secondary font-bold truncate">{c.match.home_team}</span>
+          <span className="text-[10px] text-secondary/40 font-bold">x</span>
+          <FlagImg flag={c.match.away_flag} name={c.match.away_team} />
+          <span className="text-[10px] text-secondary font-bold truncate">{c.match.away_team}</span>
+        </div>
+        {matchLive && !isCompleted ? (
+          <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md shrink-0 animate-pulse ml-2">🔴 AO VIVO</span>
+        ) : isCompleted ? (
+          <span className="text-[9px] font-black text-secondary bg-muted px-1.5 py-0.5 rounded-md shrink-0 ml-2">Encerrado</span>
+        ) : (
+          <span className="text-[9px] font-black text-secondary/60 bg-muted px-1.5 py-0.5 rounded-md shrink-0 ml-2">{formatMatchDateTime(c.match.match_time)}</span>
+        )}
+      </div>
+
+      {/* Players */}
+      <div className="flex items-center gap-2 mb-2.5">
+        <Avatar profile={c.challenger} size={7} />
+        <div className="min-w-0 flex-1">
+          <span className="text-xs font-black text-primary truncate block">{c.challenger.name.split(' ')[0]}</span>
+        </div>
+        <div className="flex flex-col items-center shrink-0">
+          <Sword size={12} weight="fill" className="text-accent-custom" />
+          <span className="text-[8px] font-black text-secondary/40 uppercase">X1</span>
+        </div>
+        <div className="min-w-0 flex-1 text-right">
+          <span className="text-xs font-black text-primary truncate block">{c.challenged.name.split(' ')[0]}</span>
+        </div>
+        <Avatar profile={c.challenged} size={7} />
+      </div>
+
+      {/* Predictions: shown when match is live or completed */}
+      {(matchLive || isCompleted) && (
+        <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-border-custom/30">
+          <div className={`rounded-xl p-2 text-center ${
+            isCompleted && c.result === 'challenger_won'
+              ? 'bg-green-500/10 border border-green-500/20'
+              : isCompleted && c.result === 'challenged_won'
+              ? 'bg-red-500/5 border border-red-500/10'
+              : 'bg-muted/40 border border-border-custom/30'
+          }`}>
+            <span className="text-[8px] font-black text-secondary uppercase block mb-0.5">{c.challenger.name.split(' ')[0]}</span>
+            <span className={`text-sm font-black block ${
+              isCompleted && c.result === 'challenger_won' ? 'text-green-500' : 'text-primary'
+            }`}>
+              {c.challenger_home} x {c.challenger_away}
+            </span>
+            {c.challenger_match_points !== null && (
+              <span className={`text-[9px] font-black ${
+                c.challenger_match_points === 3 ? 'text-green-500' :
+                c.challenger_match_points > 0 ? 'text-amber-500' : 'text-secondary/50'
+              }`}>{c.challenger_match_points}pts</span>
+            )}
+          </div>
+          <div className={`rounded-xl p-2 text-center ${
+            isCompleted && c.result === 'challenged_won'
+              ? 'bg-green-500/10 border border-green-500/20'
+              : isCompleted && c.result === 'challenger_won'
+              ? 'bg-red-500/5 border border-red-500/10'
+              : 'bg-muted/40 border border-border-custom/30'
+          }`}>
+            <span className="text-[8px] font-black text-secondary uppercase block mb-0.5">{c.challenged.name.split(' ')[0]}</span>
+            <span className={`text-sm font-black block ${
+              isCompleted && c.result === 'challenged_won' ? 'text-green-500' : 'text-primary'
+            }`}>
+              {c.challenged_home} x {c.challenged_away}
+            </span>
+            {c.challenged_match_points !== null && (
+              <span className={`text-[9px] font-black ${
+                c.challenged_match_points === 3 ? 'text-green-500' :
+                c.challenged_match_points > 0 ? 'text-amber-500' : 'text-secondary/50'
+              }`}>{c.challenged_match_points}pts</span>
+            )}
+          </div>
+
+          {isCompleted && c.match.home_score !== null && (
+            <p className="col-span-2 text-center text-[9px] text-secondary font-bold mt-0.5">
+              Resultado real: <span className="text-primary font-black">{c.match.home_score} x {c.match.away_score}</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* If not live yet */}
+      {!matchLive && !isCompleted && (
+        <div className="pt-2 border-t border-border-custom/30">
+          <p className="text-center text-[9px] text-secondary/50 font-bold">🔒 Palpites lacrados até o jogo começar</p>
+        </div>
+      )}
+
+      {/* Winner label */}
+      {isCompleted && winnerLabel && (
+        <p className={`mt-2 text-center text-[10px] font-black ${winnerColor}`}>{winnerLabel}</p>
+      )}
+    </div>
+  );
+}
+
+function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
+  // Sort: live first, then upcoming (by match time), then completed
+  const now = new Date();
+  const sorted = [...feed].sort((a, b) => {
+    const aLive = new Date(a.match.match_time) <= now && a.status === 'accepted';
+    const bLive = new Date(b.match.match_time) <= now && b.status === 'accepted';
+    if (aLive && !bLive) return -1;
+    if (!aLive && bLive) return 1;
+    const aUp = a.status === 'accepted' && new Date(a.match.match_time) > now;
+    const bUp = b.status === 'accepted' && new Date(b.match.match_time) > now;
+    if (aUp && !bUp) return -1;
+    if (!aUp && bUp) return 1;
+    return new Date(b.match.match_time).getTime() - new Date(a.match.match_time).getTime();
+  });
+
+  const liveCount = sorted.filter(c => new Date(c.match.match_time) <= now && c.status === 'accepted').length;
+
+  return (
+    <div className="w-full lg:w-72 xl:w-80 shrink-0">
+      <div className="lg:sticky lg:top-6 space-y-3">
+        {/* Panel header */}
+        <div className="flex items-center gap-2 px-1">
+          <Fire size={16} weight="fill" className="text-orange-500" />
+          <h2 className="text-[11px] font-black text-primary uppercase tracking-widest">Arena Pública</h2>
+          {liveCount > 0 && (
+            <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full animate-pulse">
+              {liveCount} ao vivo
+            </span>
+          )}
+        </div>
+
+        {sorted.length === 0 ? (
+          <div className="bg-card border border-border-custom rounded-2xl p-6 text-center">
+            <Sword size={28} className="mx-auto text-secondary/20 mb-2" weight="thin" />
+            <p className="text-xs text-secondary font-bold">Nenhum desafio ativo ainda</p>
+            <p className="text-[10px] text-secondary/50 mt-1">Os duelos aparecem aqui quando dois jogadores se enfrentam</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5 max-h-[calc(100vh-8rem)] overflow-y-auto pr-0.5 scrollbar-thin">
+            {sorted.map(c => (
+              <ArenaCard key={c.id} c={c} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+export default function X1PageClient({ currentUserId, challenges, allProfiles, upcomingMatches, arenaFeed }: X1PageClientProps) {
   const [isPending, startTransition] = useTransition();
   const [modalError, setModalError] = useState<string | null>(null);
 
-  // New challenge modal
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [selectedMatch, setSelectedMatch] = useState('');
@@ -93,7 +273,6 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
   const [newAway, setNewAway] = useState(0);
   const [opponentSearch, setOpponentSearch] = useState('');
 
-  // Accept modal
   const [acceptingChallenge, setAcceptingChallenge] = useState<ChallengeWithDetails | null>(null);
   const [acceptHome, setAcceptHome] = useState(1);
   const [acceptAway, setAcceptAway] = useState(0);
@@ -173,257 +352,267 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
   const noActivity = !incoming.length && !outgoing.length && !active.length && !history.length;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)]">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider flex items-center gap-2.5">
-            <Sword size={26} weight="fill" className="text-accent-custom" />
-            X1 — Desafios
-          </h1>
-          <p className="text-xs text-secondary font-bold mt-1">Desafie alguém e roube 4 pontos no cara a cara</p>
-        </div>
-        <button
-          onClick={openNewModal}
-          disabled={isPending}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-accent-custom text-slate-950 font-black text-sm rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 cursor-pointer shrink-0"
-        >
-          <Plus size={15} weight="bold" />
-          Novo Desafio
-        </button>
-      </div>
+      {/* ── Two-column layout ─── */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-      {/* Empty state */}
-      {noActivity && (
-        <div className="text-center py-24 space-y-3">
-          <Sword size={52} className="mx-auto text-secondary/20" weight="thin" />
-          <p className="text-secondary font-bold">Nenhum desafio ainda.</p>
-          <p className="text-secondary/50 text-xs max-w-xs mx-auto">
-            Lance um desafio, acerte o placar e roube 4 pontos do adversário!
-          </p>
-          <button
-            onClick={openNewModal}
-            className="mt-2 px-6 py-3 bg-accent-custom text-slate-950 font-black text-sm rounded-xl hover:opacity-90 transition-all cursor-pointer"
-          >
-            Lançar Primeiro Desafio ⚔️
-          </button>
-        </div>
-      )}
+        {/* ── LEFT: User challenges ──────────────────────────── */}
+        <div className="flex-1 min-w-0">
 
-      {/* ── Incoming pending ─────────────────────────────────── */}
-      {incoming.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse inline-block" />
-            Aguardando sua resposta ({incoming.length})
-          </h2>
-          <div className="space-y-3">
-            {incoming.map(c => (
-              <div key={c.id} className="bg-card border border-orange-500/40 rounded-2xl p-4 shadow-lg shadow-orange-500/5">
-                <div className="flex items-center gap-3 mb-4">
-                  <Avatar profile={c.challenger} size={10} />
-                  <div className="min-w-0">
-                    <p className="font-black text-sm text-primary">
-                      {c.challenger.name} <span className="text-orange-500">te desafia!</span>
-                    </p>
-                    <MatchLabel match={c.match} />
-                  </div>
-                </div>
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-3">
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
-                    ⚔️ Em jogo: <strong>4 pontos</strong> — quem palpitar melhor rouba do outro
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleRejectCancel(c.id)}
-                    disabled={isPending}
-                    className="flex-1 py-2 text-xs font-bold text-secondary bg-muted border border-border-custom rounded-xl hover:text-red-400 hover:border-red-400/30 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Recusar
-                  </button>
-                  <button
-                    onClick={() => openAccept(c)}
-                    disabled={isPending}
-                    className="flex-[2] py-2 text-sm font-black text-white bg-green-600 hover:bg-green-500 rounded-xl transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    ⚔️ Aceitar e Palpitar
-                  </button>
-                </div>
-              </div>
-            ))}
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider flex items-center gap-2.5">
+                <Sword size={26} weight="fill" className="text-accent-custom" />
+                X1 — Desafios
+              </h1>
+              <p className="text-xs text-secondary font-bold mt-1">Desafie alguém e roube 4 pontos no cara a cara</p>
+            </div>
+            <button
+              onClick={openNewModal}
+              disabled={isPending}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-accent-custom text-slate-950 font-black text-sm rounded-xl hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 cursor-pointer shrink-0"
+            >
+              <Plus size={15} weight="bold" />
+              Novo Desafio
+            </button>
           </div>
-        </section>
-      )}
 
-      {/* ── Active ───────────────────────────────────────────── */}
-      {active.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
-            Em andamento ({active.length})
-          </h2>
-          <div className="space-y-3">
-            {active.map(c => {
-              const opp = getOpponent(c);
-              const me = myPred(c);
-              const them = oppPred(c);
-              const matchLive = new Date(c.match.match_time) <= new Date();
+          {/* Empty state */}
+          {noActivity && (
+            <div className="text-center py-24 space-y-3">
+              <Sword size={52} className="mx-auto text-secondary/20" weight="thin" />
+              <p className="text-secondary font-bold">Nenhum desafio ainda.</p>
+              <p className="text-secondary/50 text-xs max-w-xs mx-auto">
+                Lance um desafio, acerte o placar e roube 4 pontos do adversário!
+              </p>
+              <button
+                onClick={openNewModal}
+                className="mt-2 px-6 py-3 bg-accent-custom text-slate-950 font-black text-sm rounded-xl hover:opacity-90 transition-all cursor-pointer"
+              >
+                Lançar Primeiro Desafio ⚔️
+              </button>
+            </div>
+          )}
 
-              return (
-                <div key={c.id} className="bg-card border border-green-500/20 rounded-2xl p-4">
-                  {/* Header */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Avatar profile={c.challenger_id === currentUserId ? c.challenger : c.challenged} size={8} />
-                      <span className="text-[10px] font-black text-secondary/60 px-1">VS</span>
-                      <Avatar profile={opp} size={8} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-black text-sm text-primary">Você vs {opp.name}</p>
-                      <MatchLabel match={c.match} />
-                    </div>
-                    {matchLive ? (
-                      <span className="text-[10px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg shrink-0 animate-pulse">🔴 Ao vivo</span>
-                    ) : (
-                      <span className="text-[10px] font-black text-secondary bg-muted px-2 py-1 rounded-lg shrink-0">🔒 Lacrado</span>
-                    )}
-                  </div>
-
-                  {/* Predictions revealed once match starts */}
-                  {matchLive && (
-                    <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-border-custom/40">
-                      <div className="bg-accent-custom/5 border border-accent-custom/20 rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-black text-secondary uppercase block">Seu palpite</span>
-                        <span className="text-lg font-black text-accent-custom mt-0.5 block">{me.home} x {me.away}</span>
-                      </div>
-                      <div className="bg-muted/50 border border-border-custom rounded-xl p-2.5 text-center">
-                        <span className="text-[9px] font-black text-secondary uppercase block">Palpite de {opp.name.split(' ')[0]}</span>
-                        <span className="text-lg font-black text-primary mt-0.5 block">{them.home} x {them.away}</span>
-                      </div>
-                      <p className="col-span-2 text-center text-[10px] text-secondary font-bold">⏳ Aguardando resultado para calcular o vencedor</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ── Outgoing pending ─────────────────────────────────── */}
-      {outgoing.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-[10px] font-black text-secondary uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Clock size={11} />
-            Seus desafios enviados ({outgoing.length})
-          </h2>
-          <div className="space-y-3">
-            {outgoing.map(c => (
-              <div key={c.id} className="bg-card border border-border-custom rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar profile={c.challenged} size={8} />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-black text-sm text-primary">Você desafiou {c.challenged.name}</p>
-                    <MatchLabel match={c.match} />
-                  </div>
-                  <button
-                    onClick={() => handleRejectCancel(c.id)}
-                    disabled={isPending}
-                    className="text-[11px] font-bold text-secondary hover:text-red-400 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── History ──────────────────────────────────────────── */}
-      {history.length > 0 && (
-        <section>
-          <h2 className="text-[10px] font-black text-secondary uppercase tracking-widest mb-3">Histórico</h2>
-          <div className="space-y-3">
-            {history.map(c => {
-              const res = myResult(c);
-              const opp = getOpponent(c);
-              const me = myPred(c);
-              const them = oppPred(c);
-
-              let cardCls = 'border-border-custom bg-card';
-              let badge = '';
-              let badgeCls = 'text-secondary';
-
-              if (c.status === 'completed') {
-                if (res === 'won') {
-                  cardCls = 'border-green-500/30 bg-green-500/5';
-                  badge = `✅ Você ganhou! +${c.points_transferred} pts`;
-                  badgeCls = 'text-green-500';
-                } else if (res === 'lost') {
-                  cardCls = 'border-red-500/20 bg-red-500/5';
-                  badge = `❌ Você perdeu -${c.points_transferred} pts`;
-                  badgeCls = 'text-red-400';
-                } else {
-                  badge = '🤝 Empate — sem transferência';
-                  badgeCls = 'text-secondary';
-                }
-              } else if (c.status === 'rejected') {
-                badge = c.challenger_id === currentUserId ? '💨 Desafio recusado' : '💨 Você recusou';
-              } else if (c.status === 'expired') {
-                badge = '⏰ Expirou sem resposta';
-              }
-
-              return (
-                <div key={c.id} className={`border rounded-2xl p-4 ${cardCls}`}>
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar profile={opp} size={7} />
+          {/* Incoming pending */}
+          {incoming.length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse inline-block" />
+                Aguardando sua resposta ({incoming.length})
+              </h2>
+              <div className="space-y-3">
+                {incoming.map(c => (
+                  <div key={c.id} className="bg-card border border-orange-500/40 rounded-2xl p-4 shadow-lg shadow-orange-500/5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar profile={c.challenger} size={10} />
                       <div className="min-w-0">
-                        <p className="text-xs font-black text-primary">vs {opp.name}</p>
+                        <p className="font-black text-sm text-primary">
+                          {c.challenger.name} <span className="text-orange-500">te desafia!</span>
+                        </p>
                         <MatchLabel match={c.match} />
                       </div>
                     </div>
-                    <span className={`text-[11px] font-black shrink-0 text-right ${badgeCls}`}>{badge}</span>
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-3">
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                        ⚔️ Em jogo: <strong>4 pontos</strong> — quem palpitar melhor rouba do outro
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleRejectCancel(c.id)}
+                        disabled={isPending}
+                        className="flex-1 py-2 text-xs font-bold text-secondary bg-muted border border-border-custom rounded-xl hover:text-red-400 hover:border-red-400/30 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Recusar
+                      </button>
+                      <button
+                        onClick={() => openAccept(c)}
+                        disabled={isPending}
+                        className="flex-[2] py-2 text-sm font-black text-white bg-green-600 hover:bg-green-500 rounded-xl transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                      >
+                        ⚔️ Aceitar e Palpitar
+                      </button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-                  {c.status === 'completed' && (
-                    <div className="mt-3 pt-3 border-t border-border-custom/40 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-muted/50 rounded-xl p-2 text-center">
-                          <span className="text-[9px] text-secondary font-bold uppercase block">Seu palpite</span>
-                          <span className="text-sm font-black text-primary block mt-0.5">{me.home} x {me.away}</span>
-                          {me.pts !== null && (
-                            <span className={`text-[11px] font-black block ${me.pts === 3 ? 'text-green-500' : me.pts > 0 ? 'text-amber-500' : 'text-secondary/60'}`}>
-                              {me.pts}pts
-                            </span>
-                          )}
+          {/* Active */}
+          {active.length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+                Em andamento ({active.length})
+              </h2>
+              <div className="space-y-3">
+                {active.map(c => {
+                  const opp = getOpponent(c);
+                  const me = myPred(c);
+                  const them = oppPred(c);
+                  const matchLive = new Date(c.match.match_time) <= new Date();
+
+                  return (
+                    <div key={c.id} className="bg-card border border-green-500/20 rounded-2xl p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Avatar profile={c.challenger_id === currentUserId ? c.challenger : c.challenged} size={8} />
+                          <span className="text-[10px] font-black text-secondary/60 px-1">VS</span>
+                          <Avatar profile={opp} size={8} />
                         </div>
-                        <div className="bg-muted/50 rounded-xl p-2 text-center">
-                          <span className="text-[9px] text-secondary font-bold uppercase block">Palpite de {opp.name.split(' ')[0]}</span>
-                          <span className="text-sm font-black text-primary block mt-0.5">{them.home} x {them.away}</span>
-                          {them.pts !== null && (
-                            <span className={`text-[11px] font-black block ${them.pts === 3 ? 'text-green-500' : them.pts > 0 ? 'text-amber-500' : 'text-secondary/60'}`}>
-                              {them.pts}pts
-                            </span>
-                          )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-black text-sm text-primary">Você vs {opp.name}</p>
+                          <MatchLabel match={c.match} />
                         </div>
+                        {matchLive ? (
+                          <span className="text-[10px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-lg shrink-0 animate-pulse">🔴 Ao vivo</span>
+                        ) : (
+                          <span className="text-[10px] font-black text-secondary bg-muted px-2 py-1 rounded-lg shrink-0">🔒 Lacrado</span>
+                        )}
                       </div>
-                      {c.match.home_score !== null && (
-                        <p className="text-center text-[11px] text-secondary font-bold">
-                          Resultado real: <span className="text-primary font-black">{c.match.home_score} x {c.match.away_score}</span>
-                        </p>
+
+                      {matchLive && (
+                        <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-border-custom/40">
+                          <div className="bg-accent-custom/5 border border-accent-custom/20 rounded-xl p-2.5 text-center">
+                            <span className="text-[9px] font-black text-secondary uppercase block">Seu palpite</span>
+                            <span className="text-lg font-black text-accent-custom mt-0.5 block">{me.home} x {me.away}</span>
+                          </div>
+                          <div className="bg-muted/50 border border-border-custom rounded-xl p-2.5 text-center">
+                            <span className="text-[9px] font-black text-secondary uppercase block">Palpite de {opp.name.split(' ')[0]}</span>
+                            <span className="text-lg font-black text-primary mt-0.5 block">{them.home} x {them.away}</span>
+                          </div>
+                          <p className="col-span-2 text-center text-[10px] text-secondary font-bold">⏳ Aguardando resultado para calcular o vencedor</p>
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Outgoing pending */}
+          {outgoing.length > 0 && (
+            <section className="mb-8">
+              <h2 className="text-[10px] font-black text-secondary uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Clock size={11} />
+                Seus desafios enviados ({outgoing.length})
+              </h2>
+              <div className="space-y-3">
+                {outgoing.map(c => (
+                  <div key={c.id} className="bg-card border border-border-custom rounded-2xl p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar profile={c.challenged} size={8} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-sm text-primary">Você desafiou {c.challenged.name}</p>
+                        <MatchLabel match={c.match} />
+                      </div>
+                      <button
+                        onClick={() => handleRejectCancel(c.id)}
+                        disabled={isPending}
+                        className="text-[11px] font-bold text-secondary hover:text-red-400 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* History */}
+          {history.length > 0 && (
+            <section>
+              <h2 className="text-[10px] font-black text-secondary uppercase tracking-widest mb-3">Histórico</h2>
+              <div className="space-y-3">
+                {history.map(c => {
+                  const res = myResult(c);
+                  const opp = getOpponent(c);
+                  const me = myPred(c);
+                  const them = oppPred(c);
+
+                  let cardCls = 'border-border-custom bg-card';
+                  let badge = '';
+                  let badgeCls = 'text-secondary';
+
+                  if (c.status === 'completed') {
+                    if (res === 'won') {
+                      cardCls = 'border-green-500/30 bg-green-500/5';
+                      badge = `✅ Você ganhou! +${c.points_transferred} pts`;
+                      badgeCls = 'text-green-500';
+                    } else if (res === 'lost') {
+                      cardCls = 'border-red-500/20 bg-red-500/5';
+                      badge = `❌ Você perdeu -${c.points_transferred} pts`;
+                      badgeCls = 'text-red-400';
+                    } else {
+                      badge = '🤝 Empate — sem transferência';
+                      badgeCls = 'text-secondary';
+                    }
+                  } else if (c.status === 'rejected') {
+                    badge = c.challenger_id === currentUserId ? '💨 Desafio recusado' : '💨 Você recusou';
+                  } else if (c.status === 'expired') {
+                    badge = '⏰ Expirou sem resposta';
+                  }
+
+                  return (
+                    <div key={c.id} className={`border rounded-2xl p-4 ${cardCls}`}>
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar profile={opp} size={7} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-primary">vs {opp.name}</p>
+                            <MatchLabel match={c.match} />
+                          </div>
+                        </div>
+                        <span className={`text-[11px] font-black shrink-0 text-right ${badgeCls}`}>{badge}</span>
+                      </div>
+
+                      {c.status === 'completed' && (
+                        <div className="mt-3 pt-3 border-t border-border-custom/40 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-muted/50 rounded-xl p-2 text-center">
+                              <span className="text-[9px] text-secondary font-bold uppercase block">Seu palpite</span>
+                              <span className="text-sm font-black text-primary block mt-0.5">{me.home} x {me.away}</span>
+                              {me.pts !== null && (
+                                <span className={`text-[11px] font-black block ${me.pts === 3 ? 'text-green-500' : me.pts > 0 ? 'text-amber-500' : 'text-secondary/60'}`}>
+                                  {me.pts}pts
+                                </span>
+                              )}
+                            </div>
+                            <div className="bg-muted/50 rounded-xl p-2 text-center">
+                              <span className="text-[9px] text-secondary font-bold uppercase block">Palpite de {opp.name.split(' ')[0]}</span>
+                              <span className="text-sm font-black text-primary block mt-0.5">{them.home} x {them.away}</span>
+                              {them.pts !== null && (
+                                <span className={`text-[11px] font-black block ${them.pts === 3 ? 'text-green-500' : them.pts > 0 ? 'text-amber-500' : 'text-secondary/60'}`}>
+                                  {them.pts}pts
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {c.match.home_score !== null && (
+                            <p className="text-center text-[11px] text-secondary font-bold">
+                              Resultado real: <span className="text-primary font-black">{c.match.home_score} x {c.match.away_score}</span>
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* ── RIGHT: Arena pública ───────────────────────────── */}
+        <ArenaFeed feed={arenaFeed} />
+
+      </div>
 
       {/* ── MODAL: Novo Desafio ──────────────────────────────── */}
       {showNewModal && (
@@ -440,7 +629,6 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
             </div>
 
             <div className="p-5 space-y-5">
-              {/* Opponent */}
               <div>
                 <label className="text-[10px] font-black text-secondary uppercase tracking-wider block mb-2">
                   Adversário
@@ -475,7 +663,6 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
                 </div>
               </div>
 
-              {/* Match */}
               <div>
                 <label className="text-[10px] font-black text-secondary uppercase tracking-wider block mb-2">
                   Jogo
@@ -498,23 +685,14 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
                 )}
               </div>
 
-              {/* Prediction */}
               <div>
                 <label className="text-[10px] font-black text-secondary uppercase tracking-wider block mb-3">
                   Seu palpite <span className="text-secondary/50 font-bold normal-case tracking-normal">(lacrado — adversário não vê)</span>
                 </label>
                 <div className="flex items-center justify-center gap-5">
-                  <ScoreInput
-                    value={newHome}
-                    onChange={setNewHome}
-                    label={selectedMatchData?.home_team ?? 'Casa'}
-                  />
+                  <ScoreInput value={newHome} onChange={setNewHome} label={selectedMatchData?.home_team ?? 'Casa'} />
                   <span className="font-black text-2xl text-secondary/60 mt-5">×</span>
-                  <ScoreInput
-                    value={newAway}
-                    onChange={setNewAway}
-                    label={selectedMatchData?.away_team ?? 'Fora'}
-                  />
+                  <ScoreInput value={newAway} onChange={setNewAway} label={selectedMatchData?.away_team ?? 'Fora'} />
                 </div>
               </div>
 
@@ -548,7 +726,6 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
             </div>
 
             <div className="p-5 space-y-5">
-              {/* Challenger info */}
               <div className="flex items-center gap-3 bg-muted/40 rounded-xl p-3">
                 <Avatar profile={acceptingChallenge.challenger} size={10} />
                 <div>
@@ -566,23 +743,14 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
                 </p>
               </div>
 
-              {/* Prediction */}
               <div>
                 <label className="text-[10px] font-black text-secondary uppercase tracking-wider block mb-3">
                   Seu palpite <span className="text-secondary/50 font-bold normal-case tracking-normal">(o palpite de {acceptingChallenge.challenger.name.split(' ')[0]} só aparece depois do jogo)</span>
                 </label>
                 <div className="flex items-center justify-center gap-5">
-                  <ScoreInput
-                    value={acceptHome}
-                    onChange={setAcceptHome}
-                    label={acceptingChallenge.match.home_team}
-                  />
+                  <ScoreInput value={acceptHome} onChange={setAcceptHome} label={acceptingChallenge.match.home_team} />
                   <span className="font-black text-2xl text-secondary/60 mt-5">×</span>
-                  <ScoreInput
-                    value={acceptAway}
-                    onChange={setAcceptAway}
-                    label={acceptingChallenge.match.away_team}
-                  />
+                  <ScoreInput value={acceptAway} onChange={setAcceptAway} label={acceptingChallenge.match.away_team} />
                 </div>
               </div>
 
