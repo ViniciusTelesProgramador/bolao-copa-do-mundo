@@ -197,9 +197,22 @@ export default function MatchDetailClient({ matchId }: { matchId: string }) {
           <span className="text-[10px] font-black text-secondary uppercase tracking-wider bg-muted px-3 py-1 rounded-full">
             {match.stage}{match.group_name ? ` • ${match.group_name}` : ''}
           </span>
-          <span className="text-[10px] font-bold text-secondary">
-            {formatMatchDate(match.match_time)} às {formatMatchTime(match.match_time)}
-          </span>
+          <div className="flex items-center gap-2">
+            {matchStarted && !hasResult && (
+              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                Ao vivo
+              </span>
+            )}
+            {hasResult && (
+              <span className="text-[10px] font-black uppercase tracking-wider text-secondary bg-muted px-2.5 py-1 rounded-full">
+                Encerrado
+              </span>
+            )}
+            <span className="text-[10px] font-bold text-secondary">
+              {formatMatchDate(match.match_time)} às {formatMatchTime(match.match_time)}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-12 items-center gap-3 my-2">
@@ -396,14 +409,14 @@ export default function MatchDetailClient({ matchId }: { matchId: string }) {
           <h2 className="text-xs font-extrabold text-primary uppercase tracking-wider">
             Palpites ({predictions.length})
           </h2>
-          {!hasResult && !matchStarted && (
+          {!matchStarted && (
             <span className="text-[10px] text-secondary font-bold italic">Visível após o início</span>
           )}
         </div>
 
         {predictions.length === 0 ? (
           <div className="px-5 py-8 text-center text-secondary text-sm">Nenhum palpite registrado.</div>
-        ) : !hasResult && !matchStarted ? (
+        ) : !matchStarted ? (
           /* Antes do jogo: esconde palpites individuais, mostra apenas contagem */
           <div className="px-5 py-8 text-center space-y-1">
             <p className="text-3xl font-black text-primary">{predictions.length}</p>
