@@ -98,111 +98,106 @@ function ScoreInput({ value, onChange, label }: { value: number; onChange: (v: n
 function ArenaCard({ c }: { c: ChallengeWithDetails }) {
   const matchLive = new Date(c.match.match_time) <= new Date();
   const isCompleted = c.status === 'completed';
+  const showPredictions = matchLive || isCompleted;
 
   const challengerWon = isCompleted && c.result === 'challenger_won';
   const challengedWon = isCompleted && c.result === 'challenged_won';
   const isTie        = isCompleted && c.result === 'tie';
 
   return (
-    <div className={`bg-card rounded-2xl overflow-hidden border ${
+    <div className={`bg-card rounded-2xl border overflow-hidden ${
       matchLive && !isCompleted ? 'border-green-500/40 shadow-sm shadow-green-500/10' :
       isCompleted              ? 'border-border-custom/40' :
                                  'border-border-custom/60'
     }`}>
 
-      {/* ── Match row ── */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-2 gap-2">
-        <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
+      {/* ── Status strip ── */}
+      <div className={`px-3 py-1.5 flex items-center justify-between gap-2 ${
+        matchLive && !isCompleted ? 'bg-green-500/10' :
+        isCompleted              ? 'bg-muted/60' :
+                                   'bg-muted/30'
+      }`}>
+        <div className="flex items-center gap-1 min-w-0 overflow-hidden">
           <FlagImg flag={c.match.home_flag} name={c.match.home_team} />
-          <span className="text-[10px] text-secondary font-bold truncate max-w-[60px]">{c.match.home_team}</span>
-          <span className="text-[10px] text-secondary/40 font-bold shrink-0">×</span>
+          <span className="text-[10px] text-secondary font-bold truncate">{c.match.home_team}</span>
+          <span className="text-[10px] text-secondary/40 mx-0.5">×</span>
           <FlagImg flag={c.match.away_flag} name={c.match.away_team} />
-          <span className="text-[10px] text-secondary font-bold truncate max-w-[60px]">{c.match.away_team}</span>
+          <span className="text-[10px] text-secondary font-bold truncate">{c.match.away_team}</span>
         </div>
         <div className="shrink-0">
           {matchLive && !isCompleted ? (
-            <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full animate-pulse">🔴 AO VIVO</span>
+            <span className="text-[9px] font-black text-green-500 animate-pulse">🔴 AO VIVO</span>
           ) : isCompleted ? (
-            <span className="text-[9px] font-black text-secondary/60 bg-muted px-1.5 py-0.5 rounded-full">Encerrado</span>
+            <span className="text-[9px] font-black text-secondary/60">Encerrado</span>
           ) : (
             <span className="text-[9px] font-bold text-secondary/50">{formatMatchDateTime(c.match.match_time)}</span>
           )}
         </div>
       </div>
 
-      {/* ── Players + predictions ── */}
-      <div className="px-3 pb-3">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      {/* ── Players row ── */}
+      <div className="px-3 py-3">
+        <div className="flex items-center gap-2">
 
           {/* Challenger */}
-          <div className={`rounded-xl p-2.5 text-center ${challengerWon ? 'bg-green-500/10 border border-green-500/20' : challengedWon ? 'bg-red-500/5 border border-red-500/10' : 'bg-muted/40 border border-border-custom/30'}`}>
-            <div className="flex justify-center mb-1">
-              <Avatar profile={c.challenger} size={8} />
-            </div>
-            <p className="text-[10px] font-black text-primary truncate max-w-full">{c.challenger.name.split(' ')[0]}</p>
-            {(matchLive || isCompleted) ? (
-              <>
-                <p className={`text-base font-black mt-1 ${challengerWon ? 'text-green-500' : 'text-primary'}`}>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Avatar profile={c.challenger} size={9} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-black text-primary truncate">{c.challenger.name.split(' ')[0]}</p>
+              {showPredictions ? (
+                <p className={`text-sm font-black leading-tight ${challengerWon ? 'text-green-500' : 'text-primary'}`}>
                   {c.challenger_home} × {c.challenger_away}
+                  {isCompleted && c.challenger_match_points === 3 && <span className="text-[9px] font-black text-green-500 ml-1">✓</span>}
                 </p>
-                {isCompleted && c.challenger_match_points === 3 && (
-                  <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
-                )}
-              </>
-            ) : (
-              <p className="text-lg font-black text-secondary/30 mt-1">?</p>
-            )}
+              ) : (
+                <p className="text-[10px] text-secondary/40 font-bold">🔒</p>
+              )}
+            </div>
           </div>
 
           {/* VS */}
-          <div className="flex flex-col items-center gap-0.5 shrink-0">
-            <Sword size={14} weight="fill" className="text-accent-custom" />
-            <span className="text-[8px] font-black text-secondary/40 uppercase tracking-wider">X1</span>
+          <div className="flex flex-col items-center shrink-0 px-1">
+            <Sword size={13} weight="fill" className="text-accent-custom" />
+            <span className="text-[7px] font-black text-secondary/40 uppercase">X1</span>
           </div>
 
           {/* Challenged */}
-          <div className={`rounded-xl p-2.5 text-center ${challengedWon ? 'bg-green-500/10 border border-green-500/20' : challengerWon ? 'bg-red-500/5 border border-red-500/10' : 'bg-muted/40 border border-border-custom/30'}`}>
-            <div className="flex justify-center mb-1">
-              <Avatar profile={c.challenged} size={8} />
-            </div>
-            <p className="text-[10px] font-black text-primary truncate max-w-full">{c.challenged.name.split(' ')[0]}</p>
-            {(matchLive || isCompleted) ? (
-              <>
-                <p className={`text-base font-black mt-1 ${challengedWon ? 'text-green-500' : 'text-primary'}`}>
+          <div className="flex items-center gap-2 flex-1 min-w-0 flex-row-reverse">
+            <Avatar profile={c.challenged} size={9} />
+            <div className="min-w-0 flex-1 text-right">
+              <p className="text-[11px] font-black text-primary truncate">{c.challenged.name.split(' ')[0]}</p>
+              {showPredictions ? (
+                <p className={`text-sm font-black leading-tight ${challengedWon ? 'text-green-500' : 'text-primary'}`}>
+                  {isCompleted && c.challenged_match_points === 3 && <span className="text-[9px] font-black text-green-500 mr-1">✓</span>}
                   {c.challenged_home} × {c.challenged_away}
                 </p>
-                {isCompleted && c.challenged_match_points === 3 && (
-                  <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
-                )}
-              </>
-            ) : (
-              <p className="text-lg font-black text-secondary/30 mt-1">?</p>
-            )}
+              ) : (
+                <p className="text-[10px] text-secondary/40 font-bold">🔒</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        {!matchLive && !isCompleted && (
-          <p className="text-center text-[9px] text-secondary/40 font-bold mt-2">🔒 Palpites revelados quando o jogo começar</p>
-        )}
-        {matchLive && !isCompleted && (
-          <p className="text-center text-[9px] text-secondary font-bold mt-2">⏳ Aguardando resultado final</p>
-        )}
+        {/* ── Footer ── */}
         {isCompleted && (
-          <div className="mt-2 pt-2 border-t border-border-custom/30 text-center">
+          <div className="mt-2.5 pt-2 border-t border-border-custom/30 flex items-center justify-center gap-2">
             {isTie ? (
-              <p className="text-[10px] font-black text-secondary">🤝 Empate — sem transferência</p>
+              <span className="text-[10px] font-black text-secondary">🤝 Empate</span>
             ) : challengerWon ? (
-              <p className="text-[10px] font-black text-green-500">✅ {c.challenger.name.split(' ')[0]} ganhou +{c.points_transferred} pts</p>
+              <span className="text-[10px] font-black text-green-500">✅ {c.challenger.name.split(' ')[0]} +{c.points_transferred} pts</span>
             ) : (
-              <p className="text-[10px] font-black text-green-500">✅ {c.challenged.name.split(' ')[0]} ganhou +{c.points_transferred} pts</p>
+              <span className="text-[10px] font-black text-green-500">✅ {c.challenged.name.split(' ')[0]} +{c.points_transferred} pts</span>
             )}
             {c.match.home_score !== null && (
-              <p className="text-[9px] text-secondary font-bold mt-0.5">
-                Resultado: <span className="text-primary font-black">{c.match.home_score} × {c.match.away_score}</span>
-              </p>
+              <span className="text-[9px] text-secondary font-bold">· {c.match.home_score}×{c.match.away_score}</span>
             )}
           </div>
+        )}
+        {!showPredictions && (
+          <p className="text-center text-[9px] text-secondary/40 font-bold mt-2">Palpites revelados ao vivo</p>
+        )}
+        {matchLive && !isCompleted && (
+          <p className="text-center text-[9px] text-amber-500/80 font-bold mt-2">⏳ Jogo em andamento</p>
         )}
       </div>
     </div>
@@ -384,7 +379,7 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
       </div>
 
       {/* ── Two-column layout ─── */}
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
+      <div className="flex flex-col lg:flex-row gap-8 lg:items-start">
 
         {/* ── LEFT: User challenges ──────────────────────────── */}
         <div className={`flex-1 min-w-0 ${mobileTab === 'arena' ? 'hidden lg:block' : ''}`}>
@@ -711,7 +706,7 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
         </div>
 
         {/* ── RIGHT: Arena pública ───────────────────────────── */}
-        <div className={mobileTab === 'desafios' ? 'hidden lg:block' : ''}>
+        <div className={`w-full lg:w-auto ${mobileTab === 'desafios' ? 'hidden lg:block' : ''}`}>
           <ArenaFeed feed={arenaFeed} />
         </div>
 
