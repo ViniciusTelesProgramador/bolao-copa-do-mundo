@@ -99,125 +99,117 @@ function ArenaCard({ c }: { c: ChallengeWithDetails }) {
   const matchLive = new Date(c.match.match_time) <= new Date();
   const isCompleted = c.status === 'completed';
 
-  // Determine winner label
-  let winnerLabel = '';
-  let winnerColor = '';
-  if (isCompleted) {
-    if (c.result === 'tie') {
-      winnerLabel = '🤝 Empate — sem transferência';
-      winnerColor = 'text-secondary';
-    } else if (c.result === 'challenger_won') {
-      winnerLabel = `✅ ${c.challenger.name.split(' ')[0]} ganhou +${c.points_transferred}pts`;
-      winnerColor = 'text-green-500';
-    } else if (c.result === 'challenged_won') {
-      winnerLabel = `✅ ${c.challenged.name.split(' ')[0]} ganhou +${c.points_transferred}pts`;
-      winnerColor = 'text-green-500';
-    }
-  }
+  const challengerWon = isCompleted && c.result === 'challenger_won';
+  const challengedWon = isCompleted && c.result === 'challenged_won';
+  const isTie        = isCompleted && c.result === 'tie';
 
   return (
-    <div className={`bg-card border rounded-2xl p-3.5 ${
-      isCompleted ? 'border-border-custom/50' :
-      matchLive ? 'border-green-500/30 shadow-green-500/5 shadow-lg' :
-      'border-border-custom/60'
+    <div className={`bg-card rounded-2xl overflow-hidden border ${
+      matchLive && !isCompleted ? 'border-green-500/40 shadow-sm shadow-green-500/10' :
+      isCompleted              ? 'border-border-custom/40' :
+                                 'border-border-custom/60'
     }`}>
-      {/* Status badge */}
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-1.5 min-w-0">
+
+      {/* ── Match row ── */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-2 gap-2">
+        <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
           <FlagImg flag={c.match.home_flag} name={c.match.home_team} />
-          <span className="text-[10px] text-secondary font-bold truncate">{c.match.home_team}</span>
-          <span className="text-[10px] text-secondary/40 font-bold">x</span>
+          <span className="text-[10px] text-secondary font-bold truncate max-w-[60px]">{c.match.home_team}</span>
+          <span className="text-[10px] text-secondary/40 font-bold shrink-0">×</span>
           <FlagImg flag={c.match.away_flag} name={c.match.away_team} />
-          <span className="text-[10px] text-secondary font-bold truncate">{c.match.away_team}</span>
+          <span className="text-[10px] text-secondary font-bold truncate max-w-[60px]">{c.match.away_team}</span>
         </div>
-        {matchLive && !isCompleted ? (
-          <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-md shrink-0 animate-pulse ml-2">🔴 AO VIVO</span>
-        ) : isCompleted ? (
-          <span className="text-[9px] font-black text-secondary bg-muted px-1.5 py-0.5 rounded-md shrink-0 ml-2">Encerrado</span>
-        ) : (
-          <span className="text-[9px] font-black text-secondary/60 bg-muted px-1.5 py-0.5 rounded-md shrink-0 ml-2">{formatMatchDateTime(c.match.match_time)}</span>
-        )}
-      </div>
-
-      {/* Players */}
-      <div className="flex items-center gap-2 mb-2.5">
-        <Avatar profile={c.challenger} size={7} />
-        <div className="min-w-0 flex-1">
-          <span className="text-xs font-black text-primary truncate block">{c.challenger.name.split(' ')[0]}</span>
-        </div>
-        <div className="flex flex-col items-center shrink-0">
-          <Sword size={12} weight="fill" className="text-accent-custom" />
-          <span className="text-[8px] font-black text-secondary/40 uppercase">X1</span>
-        </div>
-        <div className="min-w-0 flex-1 text-right">
-          <span className="text-xs font-black text-primary truncate block">{c.challenged.name.split(' ')[0]}</span>
-        </div>
-        <Avatar profile={c.challenged} size={7} />
-      </div>
-
-      {/* Predictions: shown when match is live or completed */}
-      {(matchLive || isCompleted) && (
-        <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-border-custom/30">
-          <div className={`rounded-xl p-2 text-center ${
-            isCompleted && c.result === 'challenger_won'
-              ? 'bg-green-500/10 border border-green-500/20'
-              : isCompleted && c.result === 'challenged_won'
-              ? 'bg-red-500/5 border border-red-500/10'
-              : 'bg-muted/40 border border-border-custom/30'
-          }`}>
-            <span className="text-[8px] font-black text-secondary uppercase block mb-0.5">{c.challenger.name.split(' ')[0]}</span>
-            <span className={`text-sm font-black block ${
-              isCompleted && c.result === 'challenger_won' ? 'text-green-500' : 'text-primary'
-            }`}>
-              {c.challenger_home} x {c.challenger_away}
-            </span>
-            {isCompleted && c.challenger_match_points === 3 && (
-              <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
-            )}
-          </div>
-          <div className={`rounded-xl p-2 text-center ${
-            isCompleted && c.result === 'challenged_won'
-              ? 'bg-green-500/10 border border-green-500/20'
-              : isCompleted && c.result === 'challenger_won'
-              ? 'bg-red-500/5 border border-red-500/10'
-              : 'bg-muted/40 border border-border-custom/30'
-          }`}>
-            <span className="text-[8px] font-black text-secondary uppercase block mb-0.5">{c.challenged.name.split(' ')[0]}</span>
-            <span className={`text-sm font-black block ${
-              isCompleted && c.result === 'challenged_won' ? 'text-green-500' : 'text-primary'
-            }`}>
-              {c.challenged_home} x {c.challenged_away}
-            </span>
-            {isCompleted && c.challenged_match_points === 3 && (
-              <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
-            )}
-          </div>
-
-          {isCompleted && c.match.home_score !== null && (
-            <p className="col-span-2 text-center text-[9px] text-secondary font-bold mt-0.5">
-              Resultado real: <span className="text-primary font-black">{c.match.home_score} x {c.match.away_score}</span>
-            </p>
+        <div className="shrink-0">
+          {matchLive && !isCompleted ? (
+            <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full animate-pulse">🔴 AO VIVO</span>
+          ) : isCompleted ? (
+            <span className="text-[9px] font-black text-secondary/60 bg-muted px-1.5 py-0.5 rounded-full">Encerrado</span>
+          ) : (
+            <span className="text-[9px] font-bold text-secondary/50">{formatMatchDateTime(c.match.match_time)}</span>
           )}
         </div>
-      )}
+      </div>
 
-      {/* If not live yet */}
-      {!matchLive && !isCompleted && (
-        <div className="pt-2 border-t border-border-custom/30">
-          <p className="text-center text-[9px] text-secondary/50 font-bold">🔒 Palpites lacrados até o jogo começar</p>
+      {/* ── Players + predictions ── */}
+      <div className="px-3 pb-3">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+
+          {/* Challenger */}
+          <div className={`rounded-xl p-2.5 text-center ${challengerWon ? 'bg-green-500/10 border border-green-500/20' : challengedWon ? 'bg-red-500/5 border border-red-500/10' : 'bg-muted/40 border border-border-custom/30'}`}>
+            <div className="flex justify-center mb-1">
+              <Avatar profile={c.challenger} size={8} />
+            </div>
+            <p className="text-[10px] font-black text-primary truncate max-w-full">{c.challenger.name.split(' ')[0]}</p>
+            {(matchLive || isCompleted) ? (
+              <>
+                <p className={`text-base font-black mt-1 ${challengerWon ? 'text-green-500' : 'text-primary'}`}>
+                  {c.challenger_home} × {c.challenger_away}
+                </p>
+                {isCompleted && c.challenger_match_points === 3 && (
+                  <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
+                )}
+              </>
+            ) : (
+              <p className="text-lg font-black text-secondary/30 mt-1">?</p>
+            )}
+          </div>
+
+          {/* VS */}
+          <div className="flex flex-col items-center gap-0.5 shrink-0">
+            <Sword size={14} weight="fill" className="text-accent-custom" />
+            <span className="text-[8px] font-black text-secondary/40 uppercase tracking-wider">X1</span>
+          </div>
+
+          {/* Challenged */}
+          <div className={`rounded-xl p-2.5 text-center ${challengedWon ? 'bg-green-500/10 border border-green-500/20' : challengerWon ? 'bg-red-500/5 border border-red-500/10' : 'bg-muted/40 border border-border-custom/30'}`}>
+            <div className="flex justify-center mb-1">
+              <Avatar profile={c.challenged} size={8} />
+            </div>
+            <p className="text-[10px] font-black text-primary truncate max-w-full">{c.challenged.name.split(' ')[0]}</p>
+            {(matchLive || isCompleted) ? (
+              <>
+                <p className={`text-base font-black mt-1 ${challengedWon ? 'text-green-500' : 'text-primary'}`}>
+                  {c.challenged_home} × {c.challenged_away}
+                </p>
+                {isCompleted && c.challenged_match_points === 3 && (
+                  <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
+                )}
+              </>
+            ) : (
+              <p className="text-lg font-black text-secondary/30 mt-1">?</p>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Winner label */}
-      {isCompleted && winnerLabel && (
-        <p className={`mt-2 text-center text-[10px] font-black ${winnerColor}`}>{winnerLabel}</p>
-      )}
+        {/* Footer */}
+        {!matchLive && !isCompleted && (
+          <p className="text-center text-[9px] text-secondary/40 font-bold mt-2">🔒 Palpites revelados quando o jogo começar</p>
+        )}
+        {matchLive && !isCompleted && (
+          <p className="text-center text-[9px] text-secondary font-bold mt-2">⏳ Aguardando resultado final</p>
+        )}
+        {isCompleted && (
+          <div className="mt-2 pt-2 border-t border-border-custom/30 text-center">
+            {isTie ? (
+              <p className="text-[10px] font-black text-secondary">🤝 Empate — sem transferência</p>
+            ) : challengerWon ? (
+              <p className="text-[10px] font-black text-green-500">✅ {c.challenger.name.split(' ')[0]} ganhou +{c.points_transferred} pts</p>
+            ) : (
+              <p className="text-[10px] font-black text-green-500">✅ {c.challenged.name.split(' ')[0]} ganhou +{c.points_transferred} pts</p>
+            )}
+            {c.match.home_score !== null && (
+              <p className="text-[9px] text-secondary font-bold mt-0.5">
+                Resultado: <span className="text-primary font-black">{c.match.home_score} × {c.match.away_score}</span>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
-  // Sort: live first, then upcoming (by match time), then completed
   const now = new Date();
   const sorted = [...feed].sort((a, b) => {
     const aLive = new Date(a.match.match_time) <= now && a.status === 'accepted';
@@ -235,13 +227,13 @@ function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
 
   return (
     <div className="w-full lg:w-72 xl:w-80 shrink-0">
-      <div className="lg:sticky lg:top-6 space-y-3">
-        {/* Panel header */}
-        <div className="flex items-center gap-2 px-1">
-          <Fire size={16} weight="fill" className="text-orange-500" />
+      <div className="lg:sticky lg:top-6">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3">
+          <Fire size={15} weight="fill" className="text-orange-500 shrink-0" />
           <h2 className="text-[11px] font-black text-primary uppercase tracking-widest">Arena Pública</h2>
           {liveCount > 0 && (
-            <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full animate-pulse">
+            <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
               {liveCount} ao vivo
             </span>
           )}
@@ -251,10 +243,10 @@ function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
           <div className="bg-card border border-border-custom rounded-2xl p-6 text-center">
             <Sword size={28} className="mx-auto text-secondary/20 mb-2" weight="thin" />
             <p className="text-xs text-secondary font-bold">Nenhum desafio ativo ainda</p>
-            <p className="text-[10px] text-secondary/50 mt-1">Os duelos aparecem aqui quando dois jogadores se enfrentam</p>
+            <p className="text-[10px] text-secondary/50 mt-1">Os duelos aparecem aqui conforme os participantes se desafiam</p>
           </div>
         ) : (
-          <div className="space-y-2.5 max-h-[calc(100vh-8rem)] overflow-y-auto pr-0.5 scrollbar-thin">
+          <div className="space-y-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-0.5">
             {sorted.map(c => (
               <ArenaCard key={c.id} c={c} />
             ))}
