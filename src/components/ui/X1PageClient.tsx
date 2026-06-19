@@ -160,11 +160,8 @@ function ArenaCard({ c }: { c: ChallengeWithDetails }) {
             }`}>
               {c.challenger_home} x {c.challenger_away}
             </span>
-            {c.challenger_match_points !== null && (
-              <span className={`text-[9px] font-black ${
-                c.challenger_match_points === 3 ? 'text-green-500' :
-                c.challenger_match_points > 0 ? 'text-amber-500' : 'text-secondary/50'
-              }`}>{c.challenger_match_points}pts</span>
+            {isCompleted && c.challenger_match_points === 3 && (
+              <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
             )}
           </div>
           <div className={`rounded-xl p-2 text-center ${
@@ -180,11 +177,8 @@ function ArenaCard({ c }: { c: ChallengeWithDetails }) {
             }`}>
               {c.challenged_home} x {c.challenged_away}
             </span>
-            {c.challenged_match_points !== null && (
-              <span className={`text-[9px] font-black ${
-                c.challenged_match_points === 3 ? 'text-green-500' :
-                c.challenged_match_points > 0 ? 'text-amber-500' : 'text-secondary/50'
-              }`}>{c.challenged_match_points}pts</span>
+            {isCompleted && c.challenged_match_points === 3 && (
+              <span className="text-[9px] font-black text-green-500">✓ Exato!</span>
             )}
           </div>
 
@@ -578,19 +572,15 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
                             <div className="bg-muted/50 rounded-xl p-2 text-center">
                               <span className="text-[9px] text-secondary font-bold uppercase block">Seu palpite</span>
                               <span className="text-sm font-black text-primary block mt-0.5">{me.home} x {me.away}</span>
-                              {me.pts !== null && (
-                                <span className={`text-[11px] font-black block ${me.pts === 3 ? 'text-green-500' : me.pts > 0 ? 'text-amber-500' : 'text-secondary/60'}`}>
-                                  {me.pts}pts
-                                </span>
+                              {me.pts === 3 && (
+                                <span className="text-[11px] font-black block text-green-500">✓ Exato!</span>
                               )}
                             </div>
                             <div className="bg-muted/50 rounded-xl p-2 text-center">
                               <span className="text-[9px] text-secondary font-bold uppercase block">Palpite de {opp.name.split(' ')[0]}</span>
                               <span className="text-sm font-black text-primary block mt-0.5">{them.home} x {them.away}</span>
-                              {them.pts !== null && (
-                                <span className={`text-[11px] font-black block ${them.pts === 3 ? 'text-green-500' : them.pts > 0 ? 'text-amber-500' : 'text-secondary/60'}`}>
-                                  {them.pts}pts
-                                </span>
+                              {them.pts === 3 && (
+                                <span className="text-[11px] font-black block text-green-500">✓ Exato!</span>
                               )}
                             </div>
                           </div>
