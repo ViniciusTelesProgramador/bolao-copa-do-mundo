@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { RankingEntry } from '@/types';
+import { RankingEntry, H2HData } from '@/types';
 import { revalidatePath } from 'next/cache';
 import timeMapping from '@/lib/match_times_mapping.json';
 
@@ -266,14 +266,48 @@ export async function getRanking(): Promise<RankingEntry[]> {
 
     // 5. Ordenar: 1º por pontos totais (decrescente), 2º por palpites feitos (decrescente), 3º alfabeticamente
     rankingList.sort((a, b) => {
-      if (b.total_points !== a.total_points) {
-        return b.total_points - a.total_points;
-      }
-      if (b.predictions_count !== a.predictions_count) {
-        return b.predictions_count - a.predictions_count;
-      }
+      if (b.total_points !== a.total_points) return b.total_points - a.total_points;
+      if (b.predictions_count !== a.predictions_count) return b.predictions_count - a.predictions_count;
       return a.name.localeCompare(b.name);
     });
+
+    // 6. Snapshot de posição — persiste rank diário e calcula variação
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
+
+      const { data: prevSnap } = await admin
+        .from('ranking_history')
+        .select('user_id, rank, snapshot_date')
+        .lte('snapshot_date', yesterday)
+        .order('snapshot_date', { ascending: false });
+
+      // Keep only the most recent snapshot per user before today
+      const prevRankMap: Record<string, number> = {};
+      if (prevSnap) {
+        for (const row of prevSnap) {
+          if (!(row.user_id in prevRankMap)) prevRankMap[row.user_id] = row.rank;
+        }
+      }
+
+      // Apply position_change
+      rankingList.forEach((entry, idx) => {
+        const currentRank = idx + 1;
+        const prev = prevRankMap[entry.user_id];
+        entry.position_change = prev != null ? prev - currentRank : null;
+      });
+
+      // Upsert today's snapshot (non-blocking — best-effort)
+      const snapshot = rankingList.map((e, idx) => ({
+        user_id: e.user_id,
+        snapshot_date: today,
+        rank: idx + 1,
+        total_points: e.total_points,
+      }));
+      await admin.from('ranking_history').upsert(snapshot, { onConflict: 'user_id,snapshot_date' });
+    } catch {
+      // ranking_history table might not exist yet — fail silently
+    }
 
     return rankingList;
   } catch (error) {
@@ -982,3 +1016,67 @@ export async function resolveX1Challenges(): Promise<void> {
   }
 }
 
+// ── Head-to-Head ───────────────────────────────────────────────────────────────
+
+export async function getH2HData(userIdA: string, userIdB: string): Promise<H2HData | null> {
+  if (!userIdA || !userIdB || userIdA === userIdB) return null;
+  try {
+    const admin = createAdminClient();
+
+    const [
+      { data: profiles },
+      ranking,
+      { data: x1Data },
+      { data: predsA },
+      { data: predsB },
+    ] = await Promise.all([
+      admin.from('profiles').select('id, name, avatar_url').in('id', [userIdA, userIdB]),
+      getRanking(),
+      admin
+        .from('challenges')
+        .select('challenger_id, challenged_id, result, points_transferred')
+        .or(`and(challenger_id.eq.${userIdA},challenged_id.eq.${userIdB}),and(challenger_id.eq.${userIdB},challenged_id.eq.${userIdA})`)
+        .eq('status', 'completed'),
+      admin.from('predictions').select('match_id, points').eq('user_id', userIdA).not('points', 'is', null),
+      admin.from('predictions').select('match_id, points').eq('user_id', userIdB).not('points', 'is', null),
+    ]);
+
+    const profileA = profiles?.find(p => p.id === userIdA);
+    const profileB = profiles?.find(p => p.id === userIdB);
+    if (!profileA || !profileB) return null;
+
+    const entryA = ranking.find(r => r.user_id === userIdA);
+    const entryB = ranking.find(r => r.user_id === userIdB);
+    const posA = ranking.findIndex(r => r.user_id === userIdA) + 1;
+    const posB = ranking.findIndex(r => r.user_id === userIdB) + 1;
+
+    // X1 between them
+    let aX1Wins = 0, bX1Wins = 0, x1Ties = 0;
+    for (const b of x1Data ?? []) {
+      if (b.result === 'tie') { x1Ties++; continue; }
+      const aIsChallenger = b.challenger_id === userIdA;
+      const aWon = (aIsChallenger && b.result === 'challenger_won') || (!aIsChallenger && b.result === 'challenged_won');
+      if (aWon) aX1Wins++; else bX1Wins++;
+    }
+
+    // Common predictions
+    const predsAMap = new Map((predsA ?? []).map(p => [p.match_id, p.points ?? 0]));
+    const common = (predsB ?? []).filter(p => predsAMap.has(p.match_id));
+    let aMore = 0, bMore = 0, tied = 0;
+    for (const pb of common) {
+      const ptA = predsAMap.get(pb.match_id) ?? 0;
+      const ptB = pb.points ?? 0;
+      if (ptA > ptB) aMore++; else if (ptB > ptA) bMore++; else tied++;
+    }
+
+    return {
+      userA: { id: profileA.id, name: profileA.name, avatar_url: profileA.avatar_url ?? null, rank: posA, total_points: entryA?.total_points ?? 0, aproveitamento: entryA?.aproveitamento ?? 0, predictions_count: entryA?.predictions_count ?? 0 },
+      userB: { id: profileB.id, name: profileB.name, avatar_url: profileB.avatar_url ?? null, rank: posB, total_points: entryB?.total_points ?? 0, aproveitamento: entryB?.aproveitamento ?? 0, predictions_count: entryB?.predictions_count ?? 0 },
+      x1: { total: x1Data?.length ?? 0, aWins: aX1Wins, bWins: bX1Wins, ties: x1Ties },
+      predictions: { total: common.length, aMore, bMore, tied },
+    };
+  } catch (e) {
+    console.error('getH2HData error:', e);
+    return null;
+  }
+}

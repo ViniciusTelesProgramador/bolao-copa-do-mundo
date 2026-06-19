@@ -39,6 +39,24 @@ export interface RankingEntry {
   predictions_count: number;
   acertos_count: number;
   aproveitamento: number;
+  position_change?: number | null; // positive = moved up, negative = moved down, null = no history
+}
+
+export interface H2HUser {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  rank: number;
+  total_points: number;
+  aproveitamento: number;
+  predictions_count: number;
+}
+
+export interface H2HData {
+  userA: H2HUser;
+  userB: H2HUser;
+  x1: { total: number; aWins: number; bWins: number; ties: number };
+  predictions: { total: number; aMore: number; bMore: number; tied: number };
 }
 
 export type ChallengeStatus = 'pending' | 'accepted' | 'rejected' | 'expired' | 'completed';

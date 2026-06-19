@@ -272,6 +272,8 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
   const [modalError, setModalError] = useState<string | null>(null);
 
   const [showRules, setShowRules] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'desafios' | 'arena'>('desafios');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'completed' | 'other'>('all');
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [selectedMatch, setSelectedMatch] = useState('');
@@ -355,16 +357,45 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
       : { home: c.challenger_home, away: c.challenger_away, pts: c.challenger_match_points };
   }
 
+  const filteredHistory = history.filter(c => {
+    if (historyFilter === 'completed') return c.status === 'completed';
+    if (historyFilter === 'other') return c.status !== 'completed';
+    return true;
+  });
+
+  const arenaLiveCount = arenaFeed.filter(c => new Date(c.match.match_time) <= new Date() && c.status === 'accepted').length;
+
   const noActivity = !incoming.length && !outgoing.length && !active.length && !history.length;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)]">
 
+      {/* ── Mobile tab bar (hidden on lg+) ─── */}
+      <div className="flex lg:hidden mb-4 bg-card border border-border-custom rounded-xl p-1 gap-1">
+        <button
+          onClick={() => setMobileTab('desafios')}
+          className={`flex-1 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${mobileTab === 'desafios' ? 'bg-accent-custom text-slate-950' : 'text-secondary hover:text-primary'}`}
+        >
+          ⚔️ Meus Desafios
+        </button>
+        <button
+          onClick={() => setMobileTab('arena')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${mobileTab === 'arena' ? 'bg-accent-custom text-slate-950' : 'text-secondary hover:text-primary'}`}
+        >
+          🔥 Arena
+          {arenaLiveCount > 0 && (
+            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${mobileTab === 'arena' ? 'bg-slate-950/20 text-slate-950' : 'bg-green-500/20 text-green-500'}`}>
+              {arenaLiveCount} ao vivo
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* ── Two-column layout ─── */}
       <div className="flex flex-col lg:flex-row gap-8 items-start">
 
         {/* ── LEFT: User challenges ──────────────────────────── */}
-        <div className="flex-1 min-w-0">
+        <div className={`flex-1 min-w-0 ${mobileTab === 'arena' ? 'hidden lg:block' : ''}`}>
 
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
@@ -594,9 +625,25 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
           {/* History */}
           {history.length > 0 && (
             <section>
-              <h2 className="text-[10px] font-black text-secondary uppercase tracking-widest mb-3">Histórico</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[10px] font-black text-secondary uppercase tracking-widest">Histórico</h2>
+                <div className="flex items-center gap-1 bg-muted border border-border-custom rounded-lg p-0.5">
+                  {(['all', 'completed', 'other'] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setHistoryFilter(f)}
+                      className={`px-2 py-1 text-[9px] font-black rounded-md transition-all cursor-pointer ${historyFilter === f ? 'bg-card text-primary shadow-sm' : 'text-secondary hover:text-primary'}`}
+                    >
+                      {f === 'all' ? 'Todos' : f === 'completed' ? '✅ Concluídos' : '💨 Outros'}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-3">
-                {history.map(c => {
+                {filteredHistory.length === 0 && (
+                  <p className="text-center text-xs text-secondary py-4">Nenhum desafio nessa categoria.</p>
+                )}
+                {filteredHistory.map(c => {
                   const res = myResult(c);
                   const opp = getOpponent(c);
                   const me = myPred(c);
@@ -672,7 +719,9 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
         </div>
 
         {/* ── RIGHT: Arena pública ───────────────────────────── */}
-        <ArenaFeed feed={arenaFeed} />
+        <div className={mobileTab === 'desafios' ? 'hidden lg:block' : ''}>
+          <ArenaFeed feed={arenaFeed} />
+        </div>
 
       </div>
 

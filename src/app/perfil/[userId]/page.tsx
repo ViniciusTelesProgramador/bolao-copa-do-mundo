@@ -126,10 +126,18 @@ export default async function PublicProfilePage({ params }: Props) {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-16 bg-base text-primary min-h-[calc(100vh-4rem)] transition-colors duration-300">
       {/* Breadcrumb */}
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <Link href="/" className="text-xs text-secondary hover:text-primary font-bold transition-colors">
           ← Ranking
         </Link>
+        {user && (
+          <Link
+            href={`/h2h?a=${user.id}&b=${userId}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-black text-secondary bg-muted border border-border-custom rounded-lg hover:text-primary hover:border-secondary transition-all"
+          >
+            ⚔️ Comparar comigo
+          </Link>
+        )}
       </div>
 
       {/* Card de perfil */}

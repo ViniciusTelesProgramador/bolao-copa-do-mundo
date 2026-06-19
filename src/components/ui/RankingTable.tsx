@@ -116,8 +116,16 @@ export default function RankingTable({ ranking, currentUserId, totalMatches }: R
                 >
                   {/* Posição */}
                   <td className="py-3 px-1 text-center">
-                    <div className="flex justify-center">
+                    <div className="flex flex-col items-center gap-0.5">
                       {rankBadge}
+                      {entry.position_change != null && entry.position_change !== 0 && (
+                        <span className={`text-[8px] font-black leading-none ${entry.position_change > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                          {entry.position_change > 0 ? `▲${entry.position_change}` : `▼${Math.abs(entry.position_change)}`}
+                        </span>
+                      )}
+                      {entry.position_change === 0 && (
+                        <span className="text-[8px] font-black text-secondary/40 leading-none">—</span>
+                      )}
                     </div>
                   </td>
 
