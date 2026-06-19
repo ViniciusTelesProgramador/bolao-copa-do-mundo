@@ -23,18 +23,33 @@ const KEY_MAP: Record<string, Dir> = {
 const MIN_HUMAN_REACTION_MS = 150; // below this = physically impossible for a human
 const MACRO_STDDEV_THRESHOLD = 18;  // ms — suspiciously consistent timing
 const REACTION_SAMPLE_SIZE = 8;     // how many hits before evaluating variance
+// Honeypot duration varies randomly so a macro can't learn a fixed threshold to skip
+const HONEYPOT_MIN_MS = 1;
+const HONEYPOT_MAX_MS = 2;
 
 function rnd(): Dir { return DIRS[Math.floor(Math.random() * 4)]; }
+function rndExcept(exclude: Dir): Dir {
+  const opts = DIRS.filter(d => d !== exclude);
+  return opts[Math.floor(Math.random() * opts.length)];
+}
 
 function winMs(score: number): number {
   if (score < 10) return 2500;
-  return Math.max(500, 2500 - (score - 10) * 50);
+  return Math.max(750, 2500 - (score - 10) * 50);
 }
 
 function stdDev(values: number[]): number {
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
   return Math.sqrt(variance);
+}
+
+function randomDistortion() {
+  return {
+    rotate: (Math.random() - 0.5) * 16,        // ±8° — readable but unpredictable
+    blur: 0.4 + Math.random() * 0.7,            // 0.4–1.1px
+    skewX: (Math.random() - 0.5) * 14,          // ±7°
+  };
 }
 
 function makeCaptcha(): CaptchaChallenge {
@@ -232,12 +247,17 @@ export default function NotFound() {
   const [spinKey, setSpinKey] = useState(0);
   const [ranking, setRanking] = useState<RankEntry[]>([]);
   const [speedLevel, setSpeedLevel] = useState(1);
+  const [distortion, setDistortion] = useState({ rotate: 0, blur: 0, skewX: 0 });
 
   // Anti-macro state
   const [captcha, setCaptcha] = useState<CaptchaChallenge | null>(null);
-  const captchaScoreRef = useRef(0); // score to resume from after captcha
-  const arrowSpawnedAtRef = useRef<number>(0); // timestamp when current arrow appeared
-  const reactionTimesRef = useRef<number[]>([]); // recent reaction times
+  const captchaScoreRef = useRef(0);
+  const arrowSpawnedAtRef = useRef<number>(0);
+  const reactionTimesRef = useRef<number[]>([]);
+
+  // Honeypot refs
+  const honeypotActiveRef = useRef(false);  // true during the brief fake-arrow flash
+  const honeypotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const phaseRef = useRef<Phase>('idle');
   const scoreRef = useRef(0);
@@ -248,6 +268,8 @@ export default function NotFound() {
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (honeypotTimerRef.current) { clearTimeout(honeypotTimerRef.current); honeypotTimerRef.current = null; }
+    honeypotActiveRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -278,30 +300,46 @@ export default function NotFound() {
 
   const spawnArrow = useCallback((currentScore: number) => {
     stopTimer();
-    const dir = rnd();
-    dirRef.current = dir;
-    setCurrentDir(dir);
-    tlRef.current = 1;
-    setTimeLeft(1);
-    arrowSpawnedAtRef.current = performance.now();
+
+    // Pick the real direction and a different honeypot direction
+    const realDir = rnd();
+    const fakeDir = rndExcept(realDir);
+
+    // Phase 1 — show fake arrow with its own distortion
+    dirRef.current = null;
+    honeypotActiveRef.current = true;
+    setCurrentDir(fakeDir);
+    setDistortion(randomDistortion());
 
     const ms = winMs(currentScore);
     const level = Math.round((2500 / ms) * 10) / 10;
     setSpeedLevel(Math.min(5, level));
 
-    const tick = 40;
-    timerRef.current = setInterval(() => {
-      if (phaseRef.current !== 'playing') { stopTimer(); return; }
-      tlRef.current -= tick / ms;
-      if (tlRef.current <= 0) {
-        stopTimer();
-        setFeedback('miss');
-        phaseRef.current = 'gameover';
-        setTimeout(() => { setFeedback(null); setPhase('gameover'); }, 500);
-      } else {
-        setTimeLeft(tlRef.current);
-      }
-    }, tick);
+    // Phase 2 — after honeypot window, reveal real arrow and start timer
+    const honeypotMs = HONEYPOT_MIN_MS + Math.random() * (HONEYPOT_MAX_MS - HONEYPOT_MIN_MS);
+    honeypotTimerRef.current = setTimeout(() => {
+      honeypotActiveRef.current = false;
+      dirRef.current = realDir;
+      setCurrentDir(realDir);
+      setDistortion(randomDistortion()); // new distortion for the real arrow
+      tlRef.current = 1;
+      setTimeLeft(1);
+      arrowSpawnedAtRef.current = performance.now();
+
+      const tick = 40;
+      timerRef.current = setInterval(() => {
+        if (phaseRef.current !== 'playing') { stopTimer(); return; }
+        tlRef.current -= tick / ms;
+        if (tlRef.current <= 0) {
+          stopTimer();
+          setFeedback('miss');
+          phaseRef.current = 'gameover';
+          setTimeout(() => { setFeedback(null); setPhase('gameover'); }, 500);
+        } else {
+          setTimeLeft(tlRef.current);
+        }
+      }, tick);
+    }, honeypotMs);
   }, [stopTimer]);
 
   // ── Resume after captcha — countdown then pick up at same score/speed ──────
@@ -327,8 +365,25 @@ export default function NotFound() {
 
   // ── Input handling ─────────────────────────────────────────────────────────
 
+  const triggerCaptcha = useCallback((resumeScore: number) => {
+    stopTimer();
+    phaseRef.current = 'countdown'; // block further input
+    setPhase('countdown');
+    captchaScoreRef.current = resumeScore;
+    setCaptcha(makeCaptcha());
+  }, [stopTimer]);
+
   const handleDir = useCallback((dir: Dir) => {
-    if (phaseRef.current !== 'playing' || !dirRef.current) return;
+    if (phaseRef.current !== 'playing') return;
+
+    // ── Honeypot: any keypress during the fake-arrow flash = macro ──────────
+    if (honeypotActiveRef.current) {
+      triggerCaptcha(scoreRef.current);
+      return;
+    }
+
+    if (!dirRef.current) return; // still in feedback delay, not honeypot
+
     stopTimer();
 
     if (dir === dirRef.current) {
@@ -338,19 +393,13 @@ export default function NotFound() {
       setScore(ns);
       setFeedback('hit');
 
-      // Check for macro behaviour
       const isMacro = checkMacro(reactionMs);
 
       setTimeout(() => {
         setFeedback(null);
         if (phaseRef.current !== 'playing') return;
-
         if (isMacro) {
-          // Pause the game and show captcha
-          phaseRef.current = 'countdown'; // prevent further input
-          setPhase('countdown');
-          captchaScoreRef.current = ns;
-          setCaptcha(makeCaptcha());
+          triggerCaptcha(ns);
         } else {
           spawnArrow(ns);
         }
@@ -360,7 +409,7 @@ export default function NotFound() {
       phaseRef.current = 'gameover';
       setTimeout(() => { setFeedback(null); setPhase('gameover'); }, 550);
     }
-  }, [spawnArrow, stopTimer, checkMacro]);
+  }, [spawnArrow, stopTimer, checkMacro, triggerCaptcha]);
 
   // ── Captcha confirmed ──────────────────────────────────────────────────────
 
@@ -522,8 +571,11 @@ export default function NotFound() {
                   className="text-8xl font-black leading-none select-none"
                   style={{
                     color: feedback === 'hit' ? 'var(--accent)' : feedback === 'miss' ? '#ef4444' : 'currentColor',
-                    transform: feedback === 'hit' ? 'scale(1.35)' : 'scale(1)',
-                    transition: 'transform 0.1s, color 0.1s',
+                    filter: feedback ? undefined : `blur(${distortion.blur}px)`,
+                    transform: feedback === 'hit'
+                      ? 'scale(1.35)'
+                      : `rotate(${distortion.rotate}deg) skewX(${distortion.skewX}deg)`,
+                    transition: feedback ? 'transform 0.1s, color 0.1s' : 'none',
                   }}
                 >
                   {ARROW[currentDir]}
