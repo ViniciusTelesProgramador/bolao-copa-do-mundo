@@ -206,19 +206,15 @@ function ArenaCard({ c }: { c: ChallengeWithDetails }) {
 
 function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
   const now = new Date();
-  const sorted = [...feed].sort((a, b) => {
-    const aLive = new Date(a.match.match_time) <= now && a.status === 'accepted';
-    const bLive = new Date(b.match.match_time) <= now && b.status === 'accepted';
-    if (aLive && !bLive) return -1;
-    if (!aLive && bLive) return 1;
-    const aUp = a.status === 'accepted' && new Date(a.match.match_time) > now;
-    const bUp = b.status === 'accepted' && new Date(b.match.match_time) > now;
-    if (aUp && !bUp) return -1;
-    if (!aUp && bUp) return 1;
-    return new Date(b.match.match_time).getTime() - new Date(a.match.match_time).getTime();
-  });
 
-  const liveCount = sorted.filter(c => new Date(c.match.match_time) <= now && c.status === 'accepted').length;
+  const live      = feed.filter(c => c.status === 'accepted' && new Date(c.match.match_time) <= now)
+                        .sort((a, b) => new Date(a.match.match_time).getTime() - new Date(b.match.match_time).getTime());
+  const upcoming  = feed.filter(c => c.status === 'accepted' && new Date(c.match.match_time) > now)
+                        .sort((a, b) => new Date(a.match.match_time).getTime() - new Date(b.match.match_time).getTime());
+  const completed = feed.filter(c => c.status === 'completed')
+                        .sort((a, b) => new Date(b.match.match_time).getTime() - new Date(a.match.match_time).getTime());
+
+  const isEmpty = feed.length === 0;
 
   return (
     <div className="w-full lg:w-72 xl:w-80 shrink-0">
@@ -227,24 +223,58 @@ function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
         <div className="flex items-center gap-2 mb-3">
           <Fire size={15} weight="fill" className="text-orange-500 shrink-0" />
           <h2 className="text-[11px] font-black text-primary uppercase tracking-widest">Arena Pública</h2>
-          {liveCount > 0 && (
+          {live.length > 0 && (
             <span className="text-[9px] font-black text-green-500 bg-green-500/10 border border-green-500/20 px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
-              {liveCount} ao vivo
+              {live.length} ao vivo
             </span>
           )}
         </div>
 
-        {sorted.length === 0 ? (
+        {isEmpty ? (
           <div className="bg-card border border-border-custom rounded-2xl p-6 text-center">
             <Sword size={28} className="mx-auto text-secondary/20 mb-2" weight="thin" />
             <p className="text-xs text-secondary font-bold">Nenhum desafio ativo ainda</p>
             <p className="text-[10px] text-secondary/50 mt-1">Os duelos aparecem aqui conforme os participantes se desafiam</p>
           </div>
         ) : (
-          <div className="space-y-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-0.5">
-            {sorted.map(c => (
-              <ArenaCard key={c.id} c={c} />
-            ))}
+          <div className="space-y-4 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-0.5">
+
+            {live.length > 0 && (
+              <section>
+                <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+                  Ao vivo
+                </p>
+                <div className="space-y-2.5">
+                  {live.map(c => <ArenaCard key={c.id} c={c} />)}
+                </div>
+              </section>
+            )}
+
+            {upcoming.length > 0 && (
+              <section>
+                <p className="text-[9px] font-black text-secondary/60 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <span className="w-4 border-t border-dashed border-secondary/30 inline-block" />
+                  Aguardando ({upcoming.length})
+                </p>
+                <div className="space-y-2.5">
+                  {upcoming.map(c => <ArenaCard key={c.id} c={c} />)}
+                </div>
+              </section>
+            )}
+
+            {completed.length > 0 && (
+              <section>
+                <p className="text-[9px] font-black text-secondary/40 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <span className="w-4 border-t border-secondary/20 inline-block" />
+                  Encerrados ({completed.length})
+                </p>
+                <div className="space-y-2.5">
+                  {completed.map(c => <ArenaCard key={c.id} c={c} />)}
+                </div>
+              </section>
+            )}
+
           </div>
         )}
       </div>
