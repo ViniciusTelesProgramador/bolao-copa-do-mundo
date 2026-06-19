@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Sword, X, Plus, Clock, CheckCircle, Fire } from '@phosphor-icons/react';
+import { Sword, X, Plus, Clock, CheckCircle, Fire, Info, CaretDown, CaretUp, LockKey, Trophy, ArrowsLeftRight } from '@phosphor-icons/react';
 import { createChallenge, acceptChallenge, rejectOrCancelChallenge } from '@/app/actions';
 import { formatMatchDateTime } from '@/lib/date';
 import { getCountryCode } from '@/components/ui/FlagTeam';
@@ -271,6 +271,7 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
   const [isPending, startTransition] = useTransition();
   const [modalError, setModalError] = useState<string | null>(null);
 
+  const [showRules, setShowRules] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [selectedMatch, setSelectedMatch] = useState('');
@@ -382,6 +383,66 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
               <Plus size={15} weight="bold" />
               Novo Desafio
             </button>
+          </div>
+
+          {/* Rules card */}
+          <div className="mb-6 bg-card border border-border-custom rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowRules(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Info size={15} weight="fill" className="text-accent-custom shrink-0" />
+                <span className="text-xs font-black text-primary uppercase tracking-wider">Como funciona o X1?</span>
+              </div>
+              {showRules ? <CaretUp size={13} className="text-secondary" /> : <CaretDown size={13} className="text-secondary" />}
+            </button>
+
+            {showRules && (
+              <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border-custom/50">
+                <div className="flex gap-3 items-start">
+                  <div className="w-8 h-8 rounded-xl bg-accent-custom/10 border border-accent-custom/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <ArrowsLeftRight size={15} weight="bold" className="text-accent-custom" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-primary">Desafio cara a cara</p>
+                    <p className="text-[11px] text-secondary font-medium leading-relaxed mt-0.5">
+                      Você escolhe um adversário e um jogo ainda não iniciado. Cada um palpita em separado — o palpite fica lacrado e o outro não vê até o jogo começar.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 items-start">
+                  <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Trophy size={15} weight="fill" className="text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-primary">Só ganha quem acertar o placar exato</p>
+                    <p className="text-[11px] text-secondary font-medium leading-relaxed mt-0.5">
+                      Se você acertar o placar exato e o adversário não acertar, você <span className="text-green-500 font-black">rouba 4 pontos</span> do bolão dele. Se os dois acertarem ou os dois errarem, fica em empate — sem transferência.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 items-start">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <LockKey size={15} weight="fill" className="text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-primary">Máximo de 2 desafios simultâneos</p>
+                    <p className="text-[11px] text-secondary font-medium leading-relaxed mt-0.5">
+                      Você pode ter no máximo <span className="text-amber-500 font-black">2 desafios ativos</span> ao mesmo tempo (entre enviados e aceitos). Aguarde um encerrar para lançar um novo.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 border border-border-custom/50 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-secondary font-bold text-center">
+                    ⚠️ Os pontos do X1 são <span className="text-primary">separados</span> dos pontos normais do bolão — acertar o palpite no jogo garante pontos independente do resultado do X1.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Empty state */}
