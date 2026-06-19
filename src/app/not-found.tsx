@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -8,6 +9,7 @@ import Link from 'next/link';
 type Phase = 'idle' | 'countdown' | 'playing' | 'gameover';
 type Dir = 'up' | 'down' | 'left' | 'right';
 interface RankEntry { name: string; score: number; avatar_url: string | null }
+interface CaptchaChallenge { a: number; b: number; answer: number }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -17,12 +19,114 @@ const KEY_MAP: Record<string, Dir> = {
   ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
 };
 
+// Anti-macro thresholds
+const MIN_HUMAN_REACTION_MS = 150; // below this = physically impossible for a human
+const MACRO_STDDEV_THRESHOLD = 18;  // ms — suspiciously consistent timing
+const REACTION_SAMPLE_SIZE = 8;     // how many hits before evaluating variance
+
 function rnd(): Dir { return DIRS[Math.floor(Math.random() * 4)]; }
 
-// 0–9: 2500ms (relaxed base). Speeds up from 10, caps at 500ms (5× faster = 2500/5).
 function winMs(score: number): number {
   if (score < 10) return 2500;
   return Math.max(500, 2500 - (score - 10) * 50);
+}
+
+function stdDev(values: number[]): number {
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function makeCaptcha(): CaptchaChallenge {
+  const a = Math.floor(Math.random() * 9) + 1; // 1–9
+  const b = Math.floor(Math.random() * (10 - a)) + 1; // 1–(10-a), so sum ≤ 10
+  return { a, b, answer: a + b };
+}
+
+// ─── Captcha Modal ───────────────────────────────────────────────────────────
+
+function CaptchaModal({
+  challenge,
+  onConfirm,
+}: {
+  challenge: CaptchaChallenge;
+  onConfirm: () => void;
+}) {
+  const [input, setInput] = useState('');
+  const [shake, setShake] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (Number(input) === challenge.answer) {
+      onConfirm();
+    } else {
+      setShake(true);
+      setInput('');
+      setTimeout(() => setShake(false), 500);
+      inputRef.current?.focus();
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        className="w-full max-w-sm rounded-3xl border border-white/10 bg-[var(--bg-card,#1e293b)] p-8 shadow-2xl flex flex-col items-center gap-6"
+        style={{ animation: shake ? 'captcha-shake 0.4s ease' : undefined }}
+      >
+        <style>{`
+          @keyframes captcha-shake {
+            0%,100% { transform: translateX(0); }
+            20%      { transform: translateX(-10px); }
+            40%      { transform: translateX(10px); }
+            60%      { transform: translateX(-6px); }
+            80%      { transform: translateX(6px); }
+          }
+        `}</style>
+
+        {/* Icon */}
+        <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-3xl">
+          🤖
+        </div>
+
+        <div className="text-center space-y-1">
+          <h2 className="text-lg font-black">Detectamos algo incomum</h2>
+          <p className="text-sm opacity-60 leading-relaxed">
+            Seu timing está suspeitosamente perfeito.<br />
+            Confirme que você é humano:
+          </p>
+        </div>
+
+        {/* Challenge */}
+        <div className="text-4xl font-black tracking-wider">
+          {challenge.a} + {challenge.b} = ?
+        </div>
+
+        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
+          <input
+            ref={inputRef}
+            type="number"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            className="w-full text-center text-2xl font-black rounded-xl border border-white/10 bg-white/5 px-4 py-3 outline-none focus:border-[var(--accent)] transition-colors"
+            placeholder="?"
+            min={1}
+            max={20}
+          />
+          <button
+            type="submit"
+            className="w-full py-3 rounded-xl font-black text-base hover:opacity-90 transition-opacity"
+            style={{ background: 'var(--accent)', color: '#0f172a' }}
+          >
+            Confirmar
+          </button>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 // ─── Static stick figure (idle / gameover) ───────────────────────────────────
@@ -42,30 +146,18 @@ function BonecoIdle({ color, spinKey }: { color: string; spinKey: number }) {
       }}
     >
       <style>{`@keyframes spin360 { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
-
-      {/* Ball on ground, at right foot */}
       <circle cx={112} cy={184} r={9} fill="none" stroke="currentColor" strokeWidth="2.5" />
       <path d="M105 180 Q112 176 119 180" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
       <path d="M104 184 Q112 188 120 184" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
-
-      {/* Head */}
       <circle cx={80} cy={40} r={16} fill="none" stroke="currentColor" strokeWidth="2.5" />
       <circle cx={75} cy={38} r={2} fill="currentColor" />
       <circle cx={85} cy={38} r={2} fill="currentColor" />
       <path d="M75 48 Q80 53 85 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-
-      {/* Torso */}
       <line x1={80} y1={56} x2={80} y2={128} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Arms */}
       <line x1={80} y1={76} x2={56} y2={115} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       <line x1={80} y1={76} x2={104} y2={115} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Left leg */}
       <line x1={80} y1={128} x2={64} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       <line x1={64} y1={178} x2={48} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Right leg */}
       <line x1={80} y1={128} x2={96} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       <line x1={96} y1={178} x2={112} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
@@ -73,7 +165,6 @@ function BonecoIdle({ color, spinKey }: { color: string; spinKey: number }) {
 }
 
 // ─── Animated stick figure (playing) ─────────────────────────────────────────
-// Only the right leg and ball animate. Everything else is static.
 
 function BonecoPlaying({ ms, color, spinKey }: { ms: number; color: string; spinKey: number }) {
   return (
@@ -90,7 +181,7 @@ function BonecoPlaying({ ms, color, spinKey }: { ms: number; color: string; spin
       }}
     >
       <style>{`
-        @keyframes spin360   { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+        @keyframes spin360 { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
         @keyframes boneco-kick {
           0%   { transform: rotate(0deg); }
           15%  { transform: rotate(8deg); }
@@ -107,36 +198,21 @@ function BonecoPlaying({ ms, color, spinKey }: { ms: number; color: string; spin
           100% { transform: translate(0px,   0px); }
         }
       `}</style>
-
-      {/* Ball — rests near right foot tip (112, 184), animated up */}
       <g style={{ animation: `boneco-ball ${ms}ms ease-in-out infinite` }}>
         <circle cx={112} cy={184} r={9} fill="none" stroke="currentColor" strokeWidth="2.5" />
         <path d="M105 180 Q112 176 119 180" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
         <path d="M104 184 Q112 188 120 184" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
       </g>
-
-      {/* Head */}
       <circle cx={80} cy={40} r={16} fill="none" stroke="currentColor" strokeWidth="2.5" />
       <circle cx={75} cy={38} r={2} fill="currentColor" />
       <circle cx={85} cy={38} r={2} fill="currentColor" />
       <path d="M75 48 Q80 53 85 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-
-      {/* Torso */}
       <line x1={80} y1={56} x2={80} y2={128} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Arms (static balance pose) */}
       <line x1={80} y1={76} x2={54} y2={110} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       <line x1={80} y1={76} x2={106} y2={110} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Left leg (static, planted) */}
       <line x1={80} y1={128} x2={64} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       <line x1={64} y1={178} x2={48} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-
-      {/* Right leg — rotates around hip (80,128) */}
-      <g style={{
-        transformOrigin: '80px 128px',
-        animation: `boneco-kick ${ms}ms ease-in-out infinite`,
-      }}>
+      <g style={{ transformOrigin: '80px 128px', animation: `boneco-kick ${ms}ms ease-in-out infinite` }}>
         <line x1={80} y1={128} x2={96} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
         <line x1={96} y1={178} x2={112} y2={178} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       </g>
@@ -157,6 +233,12 @@ export default function NotFound() {
   const [ranking, setRanking] = useState<RankEntry[]>([]);
   const [speedLevel, setSpeedLevel] = useState(1);
 
+  // Anti-macro state
+  const [captcha, setCaptcha] = useState<CaptchaChallenge | null>(null);
+  const captchaScoreRef = useRef(0); // score to resume from after captcha
+  const arrowSpawnedAtRef = useRef<number>(0); // timestamp when current arrow appeared
+  const reactionTimesRef = useRef<number[]>([]); // recent reaction times
+
   const phaseRef = useRef<Phase>('idle');
   const scoreRef = useRef(0);
   const dirRef = useRef<Dir | null>(null);
@@ -172,6 +254,28 @@ export default function NotFound() {
     fetch('/api/embaixadinhas').then(r => r.ok ? r.json() : []).then(setRanking).catch(() => {});
   }, []);
 
+  // ── Macro detection ────────────────────────────────────────────────────────
+
+  // Returns true if the reaction time looks like a macro
+  const checkMacro = useCallback((reactionMs: number): boolean => {
+    // Floor: no human can react this fast
+    if (reactionMs < MIN_HUMAN_REACTION_MS) return true;
+
+    // Variance: collect samples, evaluate after enough hits
+    const times = reactionTimesRef.current;
+    times.push(reactionMs);
+    if (times.length > REACTION_SAMPLE_SIZE * 2) times.shift(); // rolling window
+
+    if (times.length >= REACTION_SAMPLE_SIZE) {
+      const sd = stdDev(times);
+      if (sd < MACRO_STDDEV_THRESHOLD) return true;
+    }
+
+    return false;
+  }, []);
+
+  // ── Arrow spawning ─────────────────────────────────────────────────────────
+
   const spawnArrow = useCallback((currentScore: number) => {
     stopTimer();
     const dir = rnd();
@@ -179,10 +283,10 @@ export default function NotFound() {
     setCurrentDir(dir);
     tlRef.current = 1;
     setTimeLeft(1);
+    arrowSpawnedAtRef.current = performance.now();
 
-    // Update speed indicator (1×–5×)
     const ms = winMs(currentScore);
-    const level = Math.round((1800 / ms) * 10) / 10;
+    const level = Math.round((2500 / ms) * 10) / 10;
     setSpeedLevel(Math.min(5, level));
 
     const tick = 40;
@@ -200,31 +304,79 @@ export default function NotFound() {
     }, tick);
   }, [stopTimer]);
 
+  // ── Resume after captcha — countdown then pick up at same score/speed ──────
+
+  const resumeAfterCaptcha = useCallback((resumeScore: number) => {
+    reactionTimesRef.current = []; // reset sample window — fresh start
+    phaseRef.current = 'countdown';
+    setPhase('countdown');
+    setCountdown(3);
+
+    let c = 3;
+    const iv = setInterval(() => {
+      c--;
+      if (c > 0) { setCountdown(c); }
+      else {
+        clearInterval(iv);
+        phaseRef.current = 'playing';
+        setPhase('playing');
+        spawnArrow(resumeScore);
+      }
+    }, 900);
+  }, [spawnArrow]);
+
+  // ── Input handling ─────────────────────────────────────────────────────────
+
   const handleDir = useCallback((dir: Dir) => {
     if (phaseRef.current !== 'playing' || !dirRef.current) return;
     stopTimer();
 
     if (dir === dirRef.current) {
+      const reactionMs = performance.now() - arrowSpawnedAtRef.current;
       const ns = scoreRef.current + 1;
       scoreRef.current = ns;
       setScore(ns);
       setFeedback('hit');
+
+      // Check for macro behaviour
+      const isMacro = checkMacro(reactionMs);
+
       setTimeout(() => {
         setFeedback(null);
-        if (phaseRef.current === 'playing') spawnArrow(ns);
+        if (phaseRef.current !== 'playing') return;
+
+        if (isMacro) {
+          // Pause the game and show captcha
+          phaseRef.current = 'countdown'; // prevent further input
+          setPhase('countdown');
+          captchaScoreRef.current = ns;
+          setCaptcha(makeCaptcha());
+        } else {
+          spawnArrow(ns);
+        }
       }, 200);
     } else {
       setFeedback('miss');
       phaseRef.current = 'gameover';
       setTimeout(() => { setFeedback(null); setPhase('gameover'); }, 550);
     }
-  }, [spawnArrow, stopTimer]);
+  }, [spawnArrow, stopTimer, checkMacro]);
+
+  // ── Captcha confirmed ──────────────────────────────────────────────────────
+
+  const handleCaptchaConfirm = useCallback(() => {
+    setCaptcha(null);
+    resumeAfterCaptcha(captchaScoreRef.current);
+  }, [resumeAfterCaptcha]);
+
+  // ── New game ───────────────────────────────────────────────────────────────
 
   const startGame = useCallback(() => {
     stopTimer();
     setScore(0); scoreRef.current = 0;
     setFeedback(null);
     setSpeedLevel(1);
+    reactionTimesRef.current = [];
     phaseRef.current = 'countdown';
     setPhase('countdown');
     setCountdown(3);
@@ -242,6 +394,8 @@ export default function NotFound() {
     }, 900);
   }, [spawnArrow, stopTimer]);
 
+  // ── Save score ─────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (phase !== 'gameover' || score === 0) return;
     fetch('/api/embaixadinhas', {
@@ -253,8 +407,11 @@ export default function NotFound() {
       .catch(() => {});
   }, [phase, score]);
 
+  // ── Keyboard ───────────────────────────────────────────────────────────────
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (captcha) return; // modal open — ignore game keys
       const dir = KEY_MAP[e.key];
       if (dir) { e.preventDefault(); handleDir(dir); return; }
       if (e.key === ' ' && phaseRef.current === 'playing' && !spinningRef.current) {
@@ -266,15 +423,20 @@ export default function NotFound() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleDir]);
+  }, [handleDir, captcha]);
 
   useEffect(() => () => stopTimer(), [stopTimer]);
+
+  // ── Derived values ─────────────────────────────────────────────────────────
 
   const animMs = winMs(score);
   const figureColor = feedback === 'hit' ? 'var(--accent)' : feedback === 'miss' ? '#ef4444' : 'currentColor';
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center gap-6 px-4 py-10">
+
+      {/* Captcha modal */}
+      {captcha && <CaptchaModal challenge={captcha} onConfirm={handleCaptchaConfirm} />}
 
       {/* Header */}
       <div className="text-center">
@@ -345,7 +507,9 @@ export default function NotFound() {
 
             {phase === 'countdown' && (
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xs opacity-40 uppercase tracking-widest">preparado?</span>
+                <span className="text-xs opacity-40 uppercase tracking-widest">
+                  {captcha === null && score > 0 ? 'voltando...' : 'preparado?'}
+                </span>
                 <span className="text-9xl font-black leading-none" style={{ color: 'var(--accent)' }}>
                   {countdown}
                 </span>
@@ -364,7 +528,6 @@ export default function NotFound() {
                 >
                   {ARROW[currentDir]}
                 </div>
-                {/* Timer bar */}
                 <div className="w-28 h-3 rounded-full bg-white/10 overflow-hidden">
                   <div
                     className="h-full rounded-full"
