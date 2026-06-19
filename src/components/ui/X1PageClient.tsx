@@ -68,16 +68,27 @@ function MatchLabel({ match }: { match: { home_team: string; away_team: string; 
 
 function ScoreInput({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <span className="text-[9px] font-black text-secondary uppercase tracking-wider truncate max-w-[60px] text-center">{label}</span>
-      <input
-        type="number"
-        min={0}
-        max={20}
-        value={value}
-        onChange={e => onChange(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
-        className="w-14 h-12 text-center text-xl font-black bg-muted border border-border-custom rounded-xl text-primary focus:outline-none focus:border-accent-custom transition-colors"
-      />
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-[9px] font-black text-secondary uppercase tracking-wider truncate max-w-[64px] text-center">{label}</span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(0, value - 1))}
+          className="w-9 h-9 rounded-full bg-muted border border-border-custom text-primary font-black text-xl flex items-center justify-center hover:border-accent-custom active:scale-90 transition-all cursor-pointer select-none"
+        >
+          −
+        </button>
+        <span className="w-10 text-center text-2xl font-black text-primary select-none tabular-nums">
+          {value}
+        </span>
+        <button
+          type="button"
+          onClick={() => onChange(Math.min(20, value + 1))}
+          className="w-9 h-9 rounded-full bg-muted border border-border-custom text-primary font-black text-xl flex items-center justify-center hover:border-accent-custom active:scale-90 transition-all cursor-pointer select-none"
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }
@@ -263,12 +274,12 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [selectedMatch, setSelectedMatch] = useState('');
-  const [newHome, setNewHome] = useState(1);
+  const [newHome, setNewHome] = useState(0);
   const [newAway, setNewAway] = useState(0);
   const [opponentSearch, setOpponentSearch] = useState('');
 
   const [acceptingChallenge, setAcceptingChallenge] = useState<ChallengeWithDetails | null>(null);
-  const [acceptHome, setAcceptHome] = useState(1);
+  const [acceptHome, setAcceptHome] = useState(0);
   const [acceptAway, setAcceptAway] = useState(0);
 
   const incoming = challenges.filter(c => c.challenged_id === currentUserId && c.status === 'pending');
@@ -284,13 +295,13 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
 
   function openNewModal() {
     setSelectedOpponent(''); setSelectedMatch('');
-    setNewHome(1); setNewAway(0);
+    setNewHome(0); setNewAway(0);
     setOpponentSearch(''); setModalError(null);
     setShowNewModal(true);
   }
 
   function openAccept(c: ChallengeWithDetails) {
-    setAcceptHome(1); setAcceptAway(0);
+    setAcceptHome(0); setAcceptAway(0);
     setModalError(null);
     setAcceptingChallenge(c);
   }
