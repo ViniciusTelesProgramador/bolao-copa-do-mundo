@@ -58,6 +58,74 @@ function makeCaptcha(): CaptchaChallenge {
   return { a, b, answer: a + b };
 }
 
+// ─── Arrow Canvas (anti-CV) ───────────────────────────────────────────────────
+// Renders the arrow on a canvas with random pixel noise so OCR/vision models
+// can't reliably read the direction from a screenshot.
+
+interface Distortion { rotate: number; blur: number; skewX: number }
+
+function ArrowCanvas({ dir, distortion }: { dir: Dir; distortion: Distortion }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const SIZE = 128;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, SIZE, SIZE);
+
+    // Random background tint — shifts overall color distribution each render
+    ctx.fillStyle = `rgba(${Math.random() * 60 | 0},${Math.random() * 60 | 0},${Math.random() * 60 | 0},${0.3 + Math.random() * 0.4})`;
+    ctx.fillRect(0, 0, SIZE, SIZE);
+
+    // Heavy pixel noise
+    for (let i = 0; i < 5000; i++) {
+      ctx.fillStyle = `rgba(${Math.random() * 255 | 0},${Math.random() * 255 | 0},${Math.random() * 255 | 0},${0.06 + Math.random() * 0.25})`;
+      ctx.fillRect(Math.random() * SIZE, Math.random() * SIZE, 1 + Math.random() * 2.5, 1 + Math.random() * 2.5);
+    }
+
+    // Random lines crossing the entire canvas
+    for (let i = 0; i < 25; i++) {
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * SIZE, Math.random() * SIZE);
+      ctx.lineTo(Math.random() * SIZE, Math.random() * SIZE);
+      ctx.strokeStyle = `rgba(${Math.random() * 255 | 0},${Math.random() * 255 | 0},${Math.random() * 255 | 0},${0.1 + Math.random() * 0.2})`;
+      ctx.lineWidth = 0.5 + Math.random() * 2;
+      ctx.stroke();
+    }
+
+    // Random rectangles — further break up template regions
+    for (let i = 0; i < 12; i++) {
+      const w = 8 + Math.random() * 24;
+      const h = 8 + Math.random() * 24;
+      ctx.fillStyle = `rgba(${Math.random() * 255 | 0},${Math.random() * 255 | 0},${Math.random() * 255 | 0},${0.05 + Math.random() * 0.12})`;
+      ctx.fillRect(Math.random() * SIZE, Math.random() * SIZE, w, h);
+    }
+
+    // Arrow — random font size variation so the glyph shape itself changes
+    const fontSize = 68 + Math.random() * 16; // 68–84px
+    ctx.save();
+    ctx.translate(SIZE / 2, SIZE / 2);
+    ctx.rotate((distortion.rotate * Math.PI) / 180);
+    ctx.transform(1, 0, Math.tan((distortion.skewX * Math.PI) / 180), 1, 0, 0);
+    ctx.filter = `blur(${distortion.blur}px)`;
+    // Fully random arrow color each render — defeats any color-based template match
+    const r = 120 + Math.random() * 135 | 0;
+    const g = 120 + Math.random() * 135 | 0;
+    const b = 120 + Math.random() * 135 | 0;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ARROW[dir], (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4 + 4);
+    ctx.restore();
+  }, [dir, distortion]);
+
+  return <canvas ref={canvasRef} width={SIZE} height={SIZE} style={{ width: 96, height: 96 }} />;
+}
+
 // ─── Captcha Modal ───────────────────────────────────────────────────────────
 
 function CaptchaModal({
@@ -241,7 +309,10 @@ export default function NotFound() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [countdown, setCountdown] = useState(3);
   const [score, setScore] = useState(0);
-  const [currentDir, setCurrentDir] = useState<Dir | null>(null);
+  // State obfuscation: React fiber stores a random token, not the direction string.
+  // Only saltRef (a plain JS ref, not visible in fiber) can decode it.
+  const [dirToken, setDirToken] = useState<number | null>(null);
+  const saltRef = useRef<number[]>([]);
   const [timeLeft, setTimeLeft] = useState(1);
   const [feedback, setFeedback] = useState<'hit' | 'miss' | null>(null);
   const [spinKey, setSpinKey] = useState(0);
@@ -256,8 +327,15 @@ export default function NotFound() {
   const reactionTimesRef = useRef<number[]>([]);
 
   // Honeypot refs
-  const honeypotActiveRef = useRef(false);  // true during the brief fake-arrow flash
+  const honeypotActiveRef = useRef(false);
   const honeypotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Decode dirToken back to Dir using the session salt
+  const decodeDir = useCallback((token: number | null): Dir | null => {
+    if (token === null) return null;
+    const idx = saltRef.current.indexOf(token);
+    return idx === -1 ? null : DIRS[idx];
+  }, []);
 
   const phaseRef = useRef<Phase>('idle');
   const scoreRef = useRef(0);
@@ -305,10 +383,13 @@ export default function NotFound() {
     const realDir = rnd();
     const fakeDir = rndExcept(realDir);
 
+    // Regenerate salt every arrow — token changes even for same direction
+    saltRef.current = DIRS.map(() => Math.random() * 1e9 | 0);
+
     // Phase 1 — show fake arrow with its own distortion
     dirRef.current = null;
     honeypotActiveRef.current = true;
-    setCurrentDir(fakeDir);
+    setDirToken(saltRef.current[DIRS.indexOf(fakeDir)]);
     setDistortion(randomDistortion());
 
     const ms = winMs(currentScore);
@@ -320,8 +401,9 @@ export default function NotFound() {
     honeypotTimerRef.current = setTimeout(() => {
       honeypotActiveRef.current = false;
       dirRef.current = realDir;
-      setCurrentDir(realDir);
-      setDistortion(randomDistortion()); // new distortion for the real arrow
+      saltRef.current = DIRS.map(() => Math.random() * 1e9 | 0); // new salt for real arrow
+      setDirToken(saltRef.current[DIRS.indexOf(realDir)]);
+      setDistortion(randomDistortion());
       tlRef.current = 1;
       setTimeLeft(1);
       arrowSpawnedAtRef.current = performance.now();
@@ -480,6 +562,8 @@ export default function NotFound() {
 
   const animMs = winMs(score);
   const figureColor = feedback === 'hit' ? 'var(--accent)' : feedback === 'miss' ? '#ef4444' : 'currentColor';
+  // currentDir is decoded at render time from the opaque token — never stored as a string in React state
+  const currentDir = decodeDir(dirToken);
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center gap-6 px-4 py-10">
@@ -567,19 +651,22 @@ export default function NotFound() {
 
             {phase === 'playing' && currentDir && (
               <div className="flex flex-col items-center gap-3">
-                <div
-                  className="text-8xl font-black leading-none select-none"
-                  style={{
-                    color: feedback === 'hit' ? 'var(--accent)' : feedback === 'miss' ? '#ef4444' : 'currentColor',
-                    filter: feedback ? undefined : `blur(${distortion.blur}px)`,
-                    transform: feedback === 'hit'
-                      ? 'scale(1.35)'
-                      : `rotate(${distortion.rotate}deg) skewX(${distortion.skewX}deg)`,
-                    transition: feedback ? 'transform 0.1s, color 0.1s' : 'none',
-                  }}
-                >
-                  {ARROW[currentDir]}
-                </div>
+                {feedback ? (
+                  // Clean feedback — no noise, clear color
+                  <div
+                    className="text-8xl font-black leading-none select-none"
+                    style={{
+                      color: feedback === 'hit' ? 'var(--accent)' : '#ef4444',
+                      transform: feedback === 'hit' ? 'scale(1.35)' : 'scale(1)',
+                      transition: 'transform 0.1s',
+                    }}
+                  >
+                    {ARROW[currentDir]}
+                  </div>
+                ) : (
+                  // Canvas with noise + distortion — defeats CV/OCR macros
+                  <ArrowCanvas dir={currentDir} distortion={distortion} />
+                )}
                 <div className="w-28 h-3 rounded-full bg-white/10 overflow-hidden">
                   <div
                     className="h-full rounded-full"
@@ -608,22 +695,14 @@ export default function NotFound() {
           <div className="mt-5 flex flex-col items-center gap-1.5">
             <button
               onPointerDown={e => { e.preventDefault(); handleDir('up'); }}
-              className="w-14 h-14 rounded-2xl text-2xl font-black select-none transition-all active:scale-90"
-              style={{
-                background: currentDir === 'up' ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
-                color: currentDir === 'up' ? '#0f172a' : 'inherit',
-              }}
+              className="w-14 h-14 rounded-2xl text-2xl font-black select-none transition-all active:scale-90 bg-white/10"
             >↑</button>
             <div className="flex gap-1.5">
               {(['left', 'down', 'right'] as Dir[]).map(d => (
                 <button
                   key={d}
                   onPointerDown={e => { e.preventDefault(); handleDir(d); }}
-                  className="w-14 h-14 rounded-2xl text-2xl font-black select-none transition-all active:scale-90"
-                  style={{
-                    background: currentDir === d ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
-                    color: currentDir === d ? '#0f172a' : 'inherit',
-                  }}
+                  className="w-14 h-14 rounded-2xl text-2xl font-black select-none transition-all active:scale-90 bg-white/10"
                 >
                   {ARROW[d]}
                 </button>
