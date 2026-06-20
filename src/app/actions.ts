@@ -820,6 +820,32 @@ export async function upsertMatchComment(
 
 // ── X1 Desafios ───────────────────────────────────────────────────────────────
 
+const X1_STAKE = 4;
+
+/** Returns how many points the user can still commit to new X1 bets. */
+async function getFreePts(userId: string, admin: ReturnType<typeof createAdminClient>): Promise<number> {
+  const [
+    { data: profile },
+    { data: preds },
+    { count: sentCount },
+    { count: acceptedReceivedCount },
+  ] = await Promise.all([
+    admin.from('profiles').select('artilheiro_points, x1_points').eq('id', userId).single(),
+    admin.from('predictions').select('points').eq('user_id', userId).not('points', 'is', null),
+    // Challenges sent by user that are still active (committed regardless of outcome)
+    admin.from('challenges').select('id', { count: 'exact', head: true })
+      .eq('challenger_id', userId).in('status', ['pending', 'accepted']),
+    // Challenges received by user that the user already accepted (now committed)
+    admin.from('challenges').select('id', { count: 'exact', head: true })
+      .eq('challenged_id', userId).eq('status', 'accepted'),
+  ]);
+
+  const predPts = (preds ?? []).reduce((s, r) => s + ((r.points as number) ?? 0), 0);
+  const totalPts = Math.max(0, (profile?.artilheiro_points ?? 0) + predPts + (profile?.x1_points ?? 0));
+  const committed = ((sentCount ?? 0) + (acceptedReceivedCount ?? 0)) * X1_STAKE;
+  return totalPts - committed;
+}
+
 function calcX1Points(ph: number, pa: number, ah: number, aa: number): number {
   if (ph === ah && pa === aa) return 3;
   const pd = ph - pa, ad = ah - aa;
@@ -846,6 +872,13 @@ export async function createChallenge(
     .from('matches').select('match_time').eq('id', matchId).single();
   if (!match || new Date(match.match_time) <= new Date()) {
     return { error: 'Este jogo já começou ou não existe' };
+  }
+
+  const admin = createAdminClient();
+
+  const freePts = await getFreePts(user.id, admin);
+  if (freePts < X1_STAKE) {
+    return { error: `Pontos livres insuficientes. Você tem ${Math.max(0, freePts)} pts livres e precisa de ${X1_STAKE} para criar um desafio.` };
   }
 
   const { count } = await supabase
@@ -898,6 +931,13 @@ export async function acceptChallenge(
     .from('matches').select('match_time').eq('id', challenge.match_id).single();
   if (!match || new Date(match.match_time) <= new Date()) {
     return { error: 'O jogo já começou, não é possível aceitar' };
+  }
+
+  const admin = createAdminClient();
+
+  const freePts = await getFreePts(user.id, admin);
+  if (freePts < X1_STAKE) {
+    return { error: `Pontos livres insuficientes. Você tem ${Math.max(0, freePts)} pts livres e precisa de ${X1_STAKE} para aceitar este desafio.` };
   }
 
   const { error } = await supabase.from('challenges').update({
