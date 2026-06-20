@@ -977,34 +977,39 @@ export async function resolveX1Challenges(): Promise<void> {
       let result: string;
       let winnerId: string | null = null;
       let loserId: string | null = null;
+      let pointsTransferred = 0;
 
       // Only an exact score (3 pts) wins the X1
       if (cPts === 3 && dPts !== 3) {
         result = 'challenger_won';
         winnerId = c.challenger_id;
         loserId = c.challenged_id;
+        pointsTransferred = 4;
       } else if (dPts === 3 && cPts !== 3) {
         result = 'challenged_won';
         winnerId = c.challenged_id;
         loserId = c.challenger_id;
+        pointsTransferred = 4;
       } else {
         result = 'tie';
       }
 
-      let pointsTransferred = 0;
-      if (winnerId && loserId) {
-        pointsTransferred = 4;
-        await admin.rpc('add_x1_points', { target_user_id: winnerId, delta: 4 });
-        await admin.rpc('add_x1_points', { target_user_id: loserId, delta: -4 });
-      }
-
-      await admin.from('challenges').update({
+      // Atomic claim: only succeeds if status is still 'accepted'.
+      // Prevents double-resolution when concurrent requests race here.
+      const { data: claimed } = await admin.from('challenges').update({
         status: 'completed',
         result,
         challenger_match_points: cPts,
         challenged_match_points: dPts,
         points_transferred: pointsTransferred,
-      }).eq('id', c.id);
+      }).eq('id', c.id).eq('status', 'accepted').select('id');
+
+      if (!claimed || claimed.length === 0) continue; // Already resolved by another request
+
+      if (winnerId && loserId) {
+        await admin.rpc('add_x1_points', { target_user_id: winnerId, delta: pointsTransferred });
+        await admin.rpc('add_x1_points', { target_user_id: loserId, delta: -pointsTransferred });
+      }
     }
 
     if (toExpire.length > 0 || toResolve.length > 0) {
