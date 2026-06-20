@@ -7,6 +7,7 @@ import Toast from '@/components/ui/Toast';
 import WhatsAppGroupButton from '@/components/ui/WhatsAppGroupButton';
 import ChallengeNotificationBanner from '@/components/ui/ChallengeNotificationBanner';
 import QueryProvider from '@/components/providers/QueryProvider';
+import { Analytics } from '@vercel/analytics/next';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -94,6 +95,7 @@ export default function RootLayout({
           <WhatsAppGroupButton />
           <Toast />
         </QueryProvider>
+        <Analytics />
       </body>
     </html>
   );
