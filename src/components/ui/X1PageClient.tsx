@@ -17,12 +17,15 @@ interface MatchBasic {
   stage: string;
 }
 
+interface X1Balance { total: number; committed: number; free: number; }
+
 interface X1PageClientProps {
   currentUserId: string;
   challenges: ChallengeWithDetails[];
   allProfiles: ChallengeProfile[];
   upcomingMatches: MatchBasic[];
   arenaFeed: ChallengeWithDetails[];
+  balance: X1Balance;
 }
 
 const COLORS = ['bg-red-500','bg-blue-500','bg-emerald-500','bg-amber-500','bg-purple-500','bg-pink-500','bg-indigo-500','bg-cyan-500'];
@@ -284,7 +287,7 @@ function ArenaFeed({ feed }: { feed: ChallengeWithDetails[] }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function X1PageClient({ currentUserId, challenges, allProfiles, upcomingMatches, arenaFeed }: X1PageClientProps) {
+export default function X1PageClient({ currentUserId, challenges, allProfiles, upcomingMatches, arenaFeed, balance }: X1PageClientProps) {
   const [isPending, startTransition] = useTransition();
   const [modalError, setModalError] = useState<string | null>(null);
 
@@ -415,7 +418,7 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
         <div className={`flex-1 min-w-0 ${mobileTab === 'arena' ? 'hidden lg:block' : ''}`}>
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-5">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-primary uppercase tracking-wider flex items-center gap-2.5">
                 <Sword size={26} weight="fill" className="text-accent-custom" />
@@ -431,6 +434,37 @@ export default function X1PageClient({ currentUserId, challenges, allProfiles, u
               <Plus size={15} weight="bold" />
               Novo Desafio
             </button>
+          </div>
+
+          {/* ── Balance panel ── */}
+          <div className="mb-6 bg-card border border-border-custom rounded-2xl px-4 py-3.5">
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <span className="text-[10px] font-black text-secondary uppercase tracking-widest">Seu saldo X1</span>
+              <a href="/extrato" className="text-[9px] font-black text-accent-custom hover:underline">Ver extrato completo →</a>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-muted/40 border border-border-custom/40 rounded-xl py-2 px-1">
+                <p className="text-[9px] font-bold text-secondary uppercase tracking-wide mb-0.5">Total</p>
+                <p className="text-lg font-black text-primary">{balance.total}</p>
+                <p className="text-[8px] text-secondary font-bold">pts</p>
+              </div>
+              <div className={`rounded-xl py-2 px-1 border ${balance.committed > 0 ? 'bg-amber-500/5 border-amber-500/20' : 'bg-muted/40 border-border-custom/40'}`}>
+                <p className="text-[9px] font-bold text-secondary uppercase tracking-wide mb-0.5">🔒 Apostados</p>
+                <p className={`text-lg font-black ${balance.committed > 0 ? 'text-amber-500' : 'text-primary'}`}>{balance.committed}</p>
+                <p className="text-[8px] text-secondary font-bold">pts</p>
+              </div>
+              <div className={`rounded-xl py-2 px-1 border ${balance.free >= 4 ? 'bg-green-500/5 border-green-500/20' : balance.free > 0 ? 'bg-amber-500/5 border-amber-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <p className="text-[9px] font-bold text-secondary uppercase tracking-wide mb-0.5">⚡ Livres</p>
+                <p className={`text-lg font-black ${balance.free >= 4 ? 'text-green-500' : balance.free > 0 ? 'text-amber-500' : 'text-red-400'}`}>{Math.max(0, balance.free)}</p>
+                <p className="text-[8px] text-secondary font-bold">pts</p>
+              </div>
+            </div>
+            {balance.free < 4 && balance.total > 0 && (
+              <p className="text-center text-[9px] text-amber-500 font-bold mt-2.5">⚠️ Precisa de 4 pts livres para criar ou aceitar um X1</p>
+            )}
+            {balance.total === 0 && (
+              <p className="text-center text-[9px] text-secondary/60 font-bold mt-2.5">Faça palpites nos jogos para acumular pontos e poder desafiar</p>
+            )}
           </div>
 
           {/* Rules card */}
