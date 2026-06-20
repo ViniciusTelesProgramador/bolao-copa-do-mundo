@@ -821,9 +821,18 @@ export async function upsertMatchComment(
 // ── X1 Desafios ───────────────────────────────────────────────────────────────
 
 const X1_STAKE = 4;
+const X1_MAX_ACTIVE = 2;
 
-/** Returns how many points the user can still commit to new X1 bets. */
-async function getFreePts(userId: string, admin: ReturnType<typeof createAdminClient>): Promise<number> {
+/**
+ * Returns the user's active X1 count (both sides) and free points.
+ * activeCount = challenges sent as challenger (pending/accepted)
+ *             + challenges received as challenged that were accepted
+ * freePts     = total_points - activeCount * 4
+ */
+async function getX1Status(userId: string, admin: ReturnType<typeof createAdminClient>): Promise<{
+  freePts: number;
+  activeCount: number;
+}> {
   const [
     { data: profile },
     { data: preds },
@@ -832,18 +841,18 @@ async function getFreePts(userId: string, admin: ReturnType<typeof createAdminCl
   ] = await Promise.all([
     admin.from('profiles').select('artilheiro_points, x1_points').eq('id', userId).single(),
     admin.from('predictions').select('points').eq('user_id', userId).not('points', 'is', null),
-    // Challenges sent by user that are still active (committed regardless of outcome)
+    // Sent by user and still active (pending = waiting response, accepted = in play)
     admin.from('challenges').select('id', { count: 'exact', head: true })
       .eq('challenger_id', userId).in('status', ['pending', 'accepted']),
-    // Challenges received by user that the user already accepted (now committed)
+    // Received by user and already accepted (pending received = not yet committed)
     admin.from('challenges').select('id', { count: 'exact', head: true })
       .eq('challenged_id', userId).eq('status', 'accepted'),
   ]);
 
   const predPts = (preds ?? []).reduce((s, r) => s + ((r.points as number) ?? 0), 0);
   const totalPts = Math.max(0, (profile?.artilheiro_points ?? 0) + predPts + (profile?.x1_points ?? 0));
-  const committed = ((sentCount ?? 0) + (acceptedReceivedCount ?? 0)) * X1_STAKE;
-  return totalPts - committed;
+  const activeCount = (sentCount ?? 0) + (acceptedReceivedCount ?? 0);
+  return { freePts: totalPts - activeCount * X1_STAKE, activeCount };
 }
 
 function calcX1Points(ph: number, pa: number, ah: number, aa: number): number {
@@ -875,19 +884,13 @@ export async function createChallenge(
   }
 
   const admin = createAdminClient();
+  const { freePts, activeCount } = await getX1Status(user.id, admin);
 
-  const freePts = await getFreePts(user.id, admin);
-  if (freePts < X1_STAKE) {
-    return { error: `Pontos livres insuficientes. Você tem ${Math.max(0, freePts)} pts livres e precisa de ${X1_STAKE} para criar um desafio.` };
+  if (activeCount >= X1_MAX_ACTIVE) {
+    return { error: `Você já tem ${X1_MAX_ACTIVE} desafios X1 ativos. Aguarde um resultado antes de criar outro.` };
   }
-
-  const { count } = await supabase
-    .from('challenges')
-    .select('id', { count: 'exact', head: true })
-    .eq('challenger_id', user.id)
-    .in('status', ['pending', 'accepted']);
-  if ((count ?? 0) >= 2) {
-    return { error: 'Você já tem 2 desafios ativos. Aguarde um resultado para desafiar novamente.' };
+  if (freePts < X1_STAKE) {
+    return { error: `Pontos insuficientes. Você tem ${Math.max(0, freePts)} pts livres e precisa de ${X1_STAKE} para criar um desafio.` };
   }
 
   const { error } = await supabase.from('challenges').insert({
@@ -934,10 +937,13 @@ export async function acceptChallenge(
   }
 
   const admin = createAdminClient();
+  const { freePts, activeCount } = await getX1Status(user.id, admin);
 
-  const freePts = await getFreePts(user.id, admin);
+  if (activeCount >= X1_MAX_ACTIVE) {
+    return { error: `Você já tem ${X1_MAX_ACTIVE} desafios X1 ativos. Aguarde um resultado antes de aceitar outro.` };
+  }
   if (freePts < X1_STAKE) {
-    return { error: `Pontos livres insuficientes. Você tem ${Math.max(0, freePts)} pts livres e precisa de ${X1_STAKE} para aceitar este desafio.` };
+    return { error: `Pontos insuficientes. Você tem ${Math.max(0, freePts)} pts livres e precisa de ${X1_STAKE} para aceitar este desafio.` };
   }
 
   const { error } = await supabase.from('challenges').update({

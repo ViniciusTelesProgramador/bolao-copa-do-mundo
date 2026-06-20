@@ -26,7 +26,7 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const { data: rows, error: profileErr } = await admin
     .from('profiles')
-    .select('name, avatar_url, artilheiro_guess, artilheiro_points')
+    .select('name, avatar_url, artilheiro_guess, artilheiro_points, x1_points')
     .eq('id', userId)
     .limit(1);
 
@@ -77,7 +77,8 @@ export default async function PublicProfilePage({ params }: Props) {
   const goalDiffHits = allPreds.filter(p => p.points === 2).length;
   const simpleOutcomeHits = allPreds.filter(p => p.points === 1).length;
   const totalAcertos = exactHits + goalDiffHits + simpleOutcomeHits;
-  const totalPoints = allPreds.reduce((acc, p) => acc + (p.points || 0), 0);
+  const predPoints = allPreds.reduce((acc, p) => acc + (p.points || 0), 0);
+  const totalPoints = predPoints + (profile.artilheiro_points ?? 0) + ((profile as any).x1_points ?? 0);
 
   const scoredByTime = [...allPreds]
     .filter(p => p.match?.home_score !== null)

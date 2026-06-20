@@ -27,7 +27,7 @@ export default async function PerfilPage() {
   // 2. Buscar perfil correspondente para pegar o nome
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, avatar_url, artilheiro_guess, artilheiro_points')
+    .select('name, avatar_url, artilheiro_guess, artilheiro_points, x1_points')
     .eq('id', user.id)
     .single();
 
@@ -63,7 +63,9 @@ export default async function PerfilPage() {
   const predictionsList: any[] = predictionsData || [];
 
   // Calcular estatísticas locais
-  const totalPoints = predictionsList.reduce((acc, curr) => acc + (curr.points || 0), 0);
+  // total_points = pred points + artilheiro bonus + X1 balance (matches getRanking formula)
+  const predPoints = predictionsList.reduce((acc, curr) => acc + (curr.points || 0), 0);
+  const totalPoints = predPoints + (profile?.artilheiro_points ?? 0) + (profile?.x1_points ?? 0);
   const totalPredictions = predictionsList.length;
 
   const exactHits = predictionsList.filter((p) => p.points === 3).length;
