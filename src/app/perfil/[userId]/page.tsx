@@ -106,9 +106,31 @@ export default async function PublicProfilePage({ params }: Props) {
     };
   });
 
-  const { count: totalMatchesCount } = await admin
-    .from('matches')
-    .select('id', { count: 'exact', head: true });
+  const [{ count: totalMatchesCount }, { data: x1Data }] = await Promise.all([
+    admin.from('matches').select('id', { count: 'exact', head: true }),
+    admin.from('challenges').select(`
+      id, result, points_transferred, challenger_id, updated_at,
+      challenger_home, challenger_away, challenged_home, challenged_away,
+      challenger:profiles!challenger_id(id, name, avatar_url),
+      challenged:profiles!challenged_id(id, name, avatar_url),
+      match:matches(home_team, away_team)
+    `)
+    .or(`challenger_id.eq.${userId},challenged_id.eq.${userId}`)
+    .eq('status', 'completed')
+    .order('updated_at', { ascending: false }),
+  ]);
+
+  const x1Battles = x1Data ?? [];
+  const x1Wins   = x1Battles.filter((b: any) =>
+    (b.challenger_id === userId && b.result === 'challenger_won') ||
+    (b.challenger_id !== userId && b.result === 'challenged_won'),
+  ).length;
+  const x1Losses = x1Battles.filter((b: any) =>
+    (b.challenger_id === userId && b.result === 'challenged_won') ||
+    (b.challenger_id !== userId && b.result === 'challenger_won'),
+  ).length;
+  const x1Ties   = x1Battles.filter((b: any) => b.result === 'tie').length;
+  const x1NetPts = (profile as any).x1_points ?? 0;
 
   const badges: AchievementBadge[] = [
     { icon: '🎯', label: 'Atirador de Elite',     description: '3 ou mais placares exatos',               unlocked: exactHits >= 3 },
@@ -212,6 +234,52 @@ export default async function PublicProfilePage({ params }: Props) {
       </div>
 
       <PointsEvolutionChart data={pointsEvolution} />
+
+      {/* ── X1 History ── */}
+      {x1Battles.length > 0 && (
+        <div className="bg-card border border-border-custom rounded-2xl p-5 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-black text-secondary uppercase tracking-widest">⚔️ Histórico X1</h3>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-black text-green-500">{x1Wins}V</span>
+              <span className="text-[11px] font-black text-secondary/50">{x1Ties}E</span>
+              <span className="text-[11px] font-black text-red-400">{x1Losses}D</span>
+              <span className={`text-[11px] font-black px-2 py-0.5 rounded-full border ${x1NetPts > 0 ? 'text-green-500 bg-green-500/10 border-green-500/20' : x1NetPts < 0 ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-secondary bg-muted border-border-custom/40'}`}>
+                {x1NetPts > 0 ? '+' : ''}{x1NetPts} pts
+              </span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            {x1Battles.slice(0, 10).map((b: any) => {
+              const isChallenger = b.challenger_id === userId;
+              const opponent     = isChallenger ? b.challenged : b.challenger;
+              const userWon      = (isChallenger && b.result === 'challenger_won') || (!isChallenger && b.result === 'challenged_won');
+              const isTie        = b.result === 'tie';
+              const myPalpite    = isChallenger ? `${b.challenger_home}×${b.challenger_away}` : `${b.challenged_home}×${b.challenged_away}`;
+              const oppPalpite   = isChallenger ? `${b.challenged_home}×${b.challenged_away}` : `${b.challenger_home}×${b.challenger_away}`;
+              const pts          = userWon ? `+${b.points_transferred}` : isTie ? '0' : `-${b.points_transferred}`;
+              return (
+                <div key={b.id} className="flex items-center gap-2.5 py-2 border-b border-border-custom/30 last:border-0">
+                  <span className={`text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${userWon ? 'bg-green-500/20 text-green-500' : isTie ? 'bg-secondary/20 text-secondary' : 'bg-red-500/20 text-red-400'}`}>
+                    {userWon ? 'V' : isTie ? 'E' : 'D'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-primary truncate">vs {opponent?.name}</p>
+                    <p className="text-[9px] text-secondary font-bold truncate">{b.match?.home_team} × {b.match?.away_team}</p>
+                  </div>
+                  <span className="text-[9px] text-secondary font-bold shrink-0">{myPalpite} / {oppPalpite}</span>
+                  <span className={`text-xs font-black shrink-0 w-10 text-right ${userWon ? 'text-green-500' : isTie ? 'text-secondary' : 'text-red-400'}`}>{pts} pts</span>
+                </div>
+              );
+            })}
+          </div>
+          {x1Battles.length > 10 && (
+            <Link href="/extrato" className="text-[10px] text-accent-custom font-black hover:underline mt-3 block text-center">
+              Ver histórico completo →
+            </Link>
+          )}
+        </div>
+      )}
 
       <Achievements badges={badges} />
 
