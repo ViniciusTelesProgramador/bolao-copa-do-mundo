@@ -209,7 +209,7 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 mt-6 pt-5 border-t border-border-custom text-center select-none">
+        <div className="grid grid-cols-5 gap-2 mt-6 pt-5 border-t border-border-custom text-center select-none">
           <div className="bg-muted/40 border border-border-custom/50 rounded-xl py-2 px-1">
             <span className="text-[9px] font-bold text-accent-custom block uppercase tracking-wider">Exato</span>
             <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{exactHits}</span>
@@ -229,6 +229,13 @@ export default async function PublicProfilePage({ params }: Props) {
             <span className="text-[9px] font-bold text-orange-500 block uppercase tracking-wider">Sequência</span>
             <span className="text-base sm:text-lg font-black text-primary mt-0.5 block">{maxStreak}</span>
             <span className="text-[9px] text-secondary font-bold">máx</span>
+          </div>
+          <div className="bg-muted/40 border border-purple-500/20 rounded-xl py-2 px-1">
+            <span className="text-[9px] font-bold text-purple-400 block uppercase tracking-wider">X1 ⚔️</span>
+            <span className={`text-base sm:text-lg font-black mt-0.5 block ${x1NetPts > 0 ? 'text-green-500' : x1NetPts < 0 ? 'text-red-400' : 'text-primary'}`}>
+              {x1NetPts > 0 ? '+' : ''}{x1NetPts}
+            </span>
+            <span className="text-[9px] text-secondary font-bold">pts</span>
           </div>
         </div>
       </div>

@@ -51,6 +51,31 @@ export async function GET() {
     userMap.set(pred.user_id, stats);
   });
 
+  // Adiciona pontos de X1 ao ranking da rodada
+  const { data: completedChallenges } = await admin
+    .from('challenges')
+    .select('challenger_id, challenged_id, result, points_transferred, updated_at')
+    .eq('status', 'completed')
+    .not('points_transferred', 'is', null);
+
+  (completedChallenges || []).forEach((c: any) => {
+    const dateKey = getDateKeySaoPaulo(c.updated_at);
+    if (!roundsMap.has(dateKey)) roundsMap.set(dateKey, new Map());
+    const userMap = roundsMap.get(dateKey)!;
+    const addX1 = (userId: string, pts: number) => {
+      const s = userMap.get(userId) || { points: 0, acertos: 0, predictions_count: 0 };
+      s.points += pts;
+      userMap.set(userId, s);
+    };
+    if (c.result === 'challenger_won') {
+      addX1(c.challenger_id, c.points_transferred);
+      addX1(c.challenged_id, -c.points_transferred);
+    } else if (c.result === 'challenged_won') {
+      addX1(c.challenged_id, c.points_transferred);
+      addX1(c.challenger_id, -c.points_transferred);
+    }
+  });
+
   const rounds = [...roundsMap.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([dateKey, userMap]) => {
