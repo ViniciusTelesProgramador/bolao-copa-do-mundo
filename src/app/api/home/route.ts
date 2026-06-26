@@ -36,22 +36,28 @@ export async function GET() {
     .not('points', 'is', null);
 
   const profileByUserId = new Map(ranking.map((r) => [r.user_id, r]));
-  const roundsMap = new Map<string, Map<string, { points: number; acertos: number; predictions_count: number }>>();
+
+  type RoundStats = { predPoints: number; x1Points: number; acertos: number; predictions_count: number };
+  const roundsMap = new Map<string, Map<string, RoundStats>>();
+
+  const getOrCreate = (dateKey: string, userId: string): RoundStats => {
+    if (!roundsMap.has(dateKey)) roundsMap.set(dateKey, new Map());
+    const userMap = roundsMap.get(dateKey)!;
+    if (!userMap.has(userId)) userMap.set(userId, { predPoints: 0, x1Points: 0, acertos: 0, predictions_count: 0 });
+    return userMap.get(userId)!;
+  };
 
   (scoredPredictionsData || []).forEach((pred: any) => {
     const matchTime = pred.match?.match_time;
     if (!matchTime) return;
     const dateKey = getDateKeySaoPaulo(matchTime);
-    if (!roundsMap.has(dateKey)) roundsMap.set(dateKey, new Map());
-    const userMap = roundsMap.get(dateKey)!;
-    const stats = userMap.get(pred.user_id) || { points: 0, acertos: 0, predictions_count: 0 };
-    stats.points += pred.points ?? 0;
-    stats.acertos += (pred.points ?? 0) > 0 ? 1 : 0;
-    stats.predictions_count += 1;
-    userMap.set(pred.user_id, stats);
+    const s = getOrCreate(dateKey, pred.user_id);
+    s.predPoints += pred.points ?? 0;
+    s.acertos += (pred.points ?? 0) > 0 ? 1 : 0;
+    s.predictions_count += 1;
   });
 
-  // Adiciona pontos de X1 ao ranking da rodada
+  // Adiciona pontos de X1 ao ranking da rodada (separados para exibição)
   const { data: completedChallenges } = await admin
     .from('challenges')
     .select('challenger_id, challenged_id, result, points_transferred, updated_at')
@@ -60,12 +66,8 @@ export async function GET() {
 
   (completedChallenges || []).forEach((c: any) => {
     const dateKey = getDateKeySaoPaulo(c.updated_at);
-    if (!roundsMap.has(dateKey)) roundsMap.set(dateKey, new Map());
-    const userMap = roundsMap.get(dateKey)!;
     const addX1 = (userId: string, pts: number) => {
-      const s = userMap.get(userId) || { points: 0, acertos: 0, predictions_count: 0 };
-      s.points += pts;
-      userMap.set(userId, s);
+      getOrCreate(dateKey, userId).x1Points += pts;
     };
     if (c.result === 'challenger_won') {
       addX1(c.challenger_id, c.points_transferred);
@@ -84,11 +86,15 @@ export async function GET() {
         dateKey,
         label: `${day}/${month}`,
         entries: [...userMap.entries()]
-          .map(([userId, stats]) => ({
+          .map(([userId, s]) => ({
             user_id: userId,
             name: profileByUserId.get(userId)?.name ?? 'Participante',
             avatar_url: profileByUserId.get(userId)?.avatar_url ?? null,
-            ...stats,
+            points: s.predPoints + s.x1Points,
+            pred_points: s.predPoints,
+            x1_points: s.x1Points,
+            acertos: s.acertos,
+            predictions_count: s.predictions_count,
           }))
           .sort((a, b) => b.points - a.points),
       };

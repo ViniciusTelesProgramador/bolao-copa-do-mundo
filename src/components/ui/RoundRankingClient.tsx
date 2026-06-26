@@ -8,6 +8,8 @@ export interface RoundEntry {
   name: string;
   avatar_url: string | null;
   points: number;
+  pred_points: number;
+  x1_points: number;
   acertos: number;
   predictions_count: number;
 }
@@ -80,15 +82,30 @@ export default function RoundRankingClient({ rounds, currentUserId }: RoundRanki
                     {e.name.charAt(0).toUpperCase()}
                   </span>
                 )}
-                <span className={`text-xs font-bold flex-1 truncate ${isSelf ? 'text-accent-custom' : 'text-primary'}`}>
-                  {e.name}{isSelf && <span className="opacity-60"> (você)</span>}
-                </span>
-                <span className="text-[10px] text-secondary font-bold shrink-0 hidden sm:inline">
-                  {e.acertos}/{e.predictions_count} acertos
-                </span>
-                <span className="text-sm font-black text-accent-custom shrink-0 w-8 text-right">
-                  {e.points}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <span className={`text-xs font-bold block truncate ${isSelf ? 'text-accent-custom' : 'text-primary'}`}>
+                    {e.name}{isSelf && <span className="opacity-60"> (você)</span>}
+                  </span>
+                  {e.predictions_count > 0 && (
+                    <span className="text-[9px] text-secondary font-bold">
+                      {e.acertos}/{e.predictions_count} acertos
+                    </span>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-black text-accent-custom block">
+                    {e.points}
+                  </span>
+                  {e.x1_points !== 0 && (
+                    <span className="text-[9px] font-black block leading-tight">
+                      <span className="text-secondary">{e.pred_points} 🎯</span>
+                      {' '}
+                      <span className={e.x1_points > 0 ? 'text-green-500' : 'text-red-400'}>
+                        {e.x1_points > 0 ? '+' : ''}{e.x1_points} ⚔️
+                      </span>
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })
