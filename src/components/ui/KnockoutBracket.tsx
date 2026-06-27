@@ -88,6 +88,20 @@ function Connector({ leftMatchCount, cellH }: { leftMatchCount: number; cellH: n
 // Height of a single cell in the Fase de 32 column (px).
 const BASE_CELL_H = 84;
 
+// Official Copa 2026 bracket slot ordering for the Fase de 32 (16 matches).
+// Indices into the match_time-sorted R32 matches array (0-based).
+// Consecutive pairs in this order feed into the same Oitavas match.
+// Derived from the official FIFA 2026 bracket (R32 matches #73-88):
+//   [Africa Sul, Holanda]   → R16 #90 (Jul 4, Houston)
+//   [Alemanha, França]      → R16 #89 (Jul 4, Philadelphia)
+//   [Brasil, CI/Noruega]    → R16 #91 (Jul 5, East Rutherford)
+//   [México, 1°L]           → R16 #92 (Jul 5, Mexico City)
+//   [EUA, Bélgica]          → R16 #94 (Jul 6, Seattle)
+//   [Espanha, 2°K/2°L]      → R16 #93 (Jul 6, Arlington)
+//   [Suíça, 1°K]            → R16 #96 (Jul 7, Vancouver)
+//   [Argentina, Austrália]  → R16 #95 (Jul 7, Atlanta)
+const R32_BRACKET_ORDER = [0, 3, 2, 5, 1, 4, 6, 7, 9, 8, 11, 10, 12, 15, 14, 13];
+
 // Stage display labels
 const STAGE_LABELS: Record<string, string> = {
   'Fase de 32':        'Fase de 32',
@@ -103,11 +117,15 @@ export default function KnockoutBracket({ columns, thirdPlace }: KnockoutBracket
   const visibleColumns = columns.filter((c) => c.matches.length > 0);
   if (visibleColumns.length === 0) return null;
 
-  // Sort matches within each column by match_time so order is consistent
-  const sortedColumns = visibleColumns.map((col) => ({
-    ...col,
-    matches: [...col.matches].sort((a, b) => a.match_time.localeCompare(b.match_time)),
-  }));
+  // Sort matches within each column by match_time, then apply Copa 2026 bracket
+  // slot ordering for the Fase de 32 column so correct pairs link to the same R16 match.
+  const sortedColumns = visibleColumns.map((col, colIdx) => {
+    const byTime = [...col.matches].sort((a, b) => a.match_time.localeCompare(b.match_time));
+    if (colIdx === 0 && byTime.length === 16) {
+      return { ...col, matches: R32_BRACKET_ORDER.map((i) => byTime[i]).filter(Boolean) as BracketMatch[] };
+    }
+    return { ...col, matches: byTime };
+  });
 
   return (
     <div className="bg-card border border-border-custom rounded-2xl mb-8 shadow-md overflow-hidden">
