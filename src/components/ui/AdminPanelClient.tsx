@@ -426,11 +426,11 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                 className="w-full h-12 px-2 bg-base border border-border-custom focus:border-accent-custom text-primary text-xs font-bold rounded-xl focus:outline-none transition-colors"
               >
                 <option value="Fase de Grupos">Fase de Grupos</option>
-                <option value="16 Avos de Final">16 Avos de Final</option>
+                <option value="Fase de 32">Fase de 32 (16 Avos)</option>
                 <option value="Oitavas de Final">Oitavas de Final</option>
                 <option value="Quartas de Final">Quartas de Final</option>
                 <option value="Semifinal">Semifinal</option>
-                <option value="Terceiro Lugar">Terceiro Lugar</option>
+                <option value="Decisão do 3º Lugar">Decisão do 3º Lugar</option>
                 <option value="Final">Final</option>
               </select>
             </div>
