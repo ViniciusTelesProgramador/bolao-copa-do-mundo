@@ -152,6 +152,37 @@ export async function syncMatchScores() {
  * Salva o resultado final de uma partida. Apenas admin pode executar.
  * Dispara automaticamente a trigger de recálculo de pontuações no banco de dados.
  */
+export async function updateMatchTeams(
+  matchId: string,
+  homeTeam: string,
+  homeFlag: string,
+  awayTeam: string,
+  awayFlag: string,
+) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { success: false, error: 'Usuário não autenticado.' };
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email !== adminEmail) return { success: false, error: 'Acesso negado.' };
+
+    const { error } = await supabase
+      .from('matches')
+      .update({ home_team: homeTeam, home_flag: homeFlag, away_team: awayTeam, away_flag: awayFlag })
+      .eq('id', matchId);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/admin');
+    revalidatePath('/palpites');
+    revalidatePath('/');
+    revalidatePath('/todos');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
 export async function saveMatchResult(
   matchId: string,
   homeScore: number,

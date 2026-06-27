@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
-import { saveMatchResult, shiftAllMatchTimes } from '@/app/actions';
+import { saveMatchResult, shiftAllMatchTimes, updateMatchTeams } from '@/app/actions';
 import { Plus, Check, Spinner, Trash, Calendar, Clock, Users, SoccerBall, Trophy, Key } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
@@ -50,6 +50,11 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
 
   // Estados de fuso horário
   const [isShifting, setIsShifting] = useState(false);
+
+  // Estado de edição de times
+  const [editingTeamsId, setEditingTeamsId] = useState<string | null>(null);
+  const [editTeams, setEditTeams] = useState<{ homeTeam: string; homeFlag: string; awayTeam: string; awayFlag: string }>({ homeTeam: '', homeFlag: '', awayTeam: '', awayFlag: '' });
+  const [savingTeamsId, setSavingTeamsId] = useState<string | null>(null);
 
   // Estado de sincronização de placares
   const [isSyncing, setIsSyncing] = useState(false);
@@ -287,6 +292,24 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
         setFormError(err.message || 'Erro inesperado.');
       }
     });
+  };
+
+  const handleSaveTeams = async (matchId: string) => {
+    const { homeTeam, homeFlag, awayTeam, awayFlag } = editTeams;
+    if (!homeTeam.trim() || !awayTeam.trim()) {
+      showToast('Preencha os nomes dos dois times.', 'error');
+      return;
+    }
+    setSavingTeamsId(matchId);
+    const res = await updateMatchTeams(matchId, homeTeam.trim(), homeFlag.trim() || homeTeam.trim(), awayTeam.trim(), awayFlag.trim() || awayTeam.trim());
+    setSavingTeamsId(null);
+    if (res.success) {
+      showToast('Times atualizados!', 'success');
+      setEditingTeamsId(null);
+      router.refresh();
+    } else {
+      showToast(res.error || 'Erro ao atualizar.', 'error');
+    }
   };
 
   const handleDeleteMatch = async (matchId: string) => {
@@ -571,6 +594,16 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                         Salvar
                       </button>
                       <button
+                        onClick={() => {
+                          setEditingTeamsId(editingTeamsId === match.id ? null : match.id);
+                          setEditTeams({ homeTeam: match.home_team, homeFlag: match.home_flag, awayTeam: match.away_team, awayFlag: match.away_flag });
+                        }}
+                        className="w-12 h-12 flex items-center justify-center bg-muted hover:bg-amber-500/10 text-secondary hover:text-amber-400 rounded-xl border border-border-custom/80 hover:border-amber-500/20 transition-all shrink-0 cursor-pointer"
+                        title="Editar times"
+                      >
+                        <Users size={15} />
+                      </button>
+                      <button
                         onClick={() => handleDeleteMatch(match.id)}
                         className="w-12 h-12 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer"
                         title="Excluir Partida"
@@ -579,6 +612,43 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                       </button>
                     </div>
                   </div>
+
+                  {/* ── Editar times inline ── */}
+                  {editingTeamsId === match.id && (
+                    <div className="mt-4 pt-4 border-t border-border-custom/40 grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[9px] font-bold text-secondary uppercase tracking-wider block mb-1">Mandante</label>
+                        <input value={editTeams.homeTeam} onChange={e => setEditTeams(t => ({ ...t, homeTeam: e.target.value }))}
+                          className="w-full h-10 px-3 bg-base border border-border-custom focus:border-amber-400 text-primary text-xs font-bold rounded-xl focus:outline-none" placeholder="Ex: Brasil" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-secondary uppercase tracking-wider block mb-1">Bandeira (código)</label>
+                        <input value={editTeams.homeFlag} onChange={e => setEditTeams(t => ({ ...t, homeFlag: e.target.value }))}
+                          className="w-full h-10 px-3 bg-base border border-border-custom focus:border-amber-400 text-primary text-xs font-bold rounded-xl focus:outline-none" placeholder="Ex: br" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-secondary uppercase tracking-wider block mb-1">Visitante</label>
+                        <input value={editTeams.awayTeam} onChange={e => setEditTeams(t => ({ ...t, awayTeam: e.target.value }))}
+                          className="w-full h-10 px-3 bg-base border border-border-custom focus:border-amber-400 text-primary text-xs font-bold rounded-xl focus:outline-none" placeholder="Ex: Argentina" />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-bold text-secondary uppercase tracking-wider block mb-1">Bandeira (código)</label>
+                        <input value={editTeams.awayFlag} onChange={e => setEditTeams(t => ({ ...t, awayFlag: e.target.value }))}
+                          className="w-full h-10 px-3 bg-base border border-border-custom focus:border-amber-400 text-primary text-xs font-bold rounded-xl focus:outline-none" placeholder="Ex: ar" />
+                      </div>
+                      <div className="col-span-2 flex gap-2">
+                        <button onClick={() => handleSaveTeams(match.id)} disabled={savingTeamsId === match.id}
+                          className="flex-1 h-10 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                          {savingTeamsId === match.id ? <Spinner className="animate-spin" size={13} /> : <Check size={13} weight="bold" />}
+                          Salvar Times
+                        </button>
+                        <button onClick={() => setEditingTeamsId(null)}
+                          className="px-4 h-10 bg-muted text-secondary text-xs font-bold rounded-xl border border-border-custom transition-all cursor-pointer">
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
