@@ -75,12 +75,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 4. Auto-avançar vencedores nas fases eliminatórias
-    let advanced = 0;
-    if (updated > 0) {
-      const advResult = await autoAdvanceKnockout(supabase);
-      advanced = advResult.advanced;
-    }
+    // 4. Auto-avançar vencedores nas fases eliminatórias (sempre, não só quando houve update)
+    const advResult = await autoAdvanceKnockout(supabase);
+    const advanced = advResult.advanced;
 
     // 5. Revalidar cache de todas as páginas
     if (updated > 0 || advanced > 0) {

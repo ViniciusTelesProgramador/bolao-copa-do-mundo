@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
-import { saveMatchResult, shiftAllMatchTimes, updateMatchTeams, setPenaltyWinner } from '@/app/actions';
+import { saveMatchResult, shiftAllMatchTimes, updateMatchTeams, setPenaltyWinner, triggerKnockoutAdvance } from '@/app/actions';
 import { Plus, Check, Spinner, Trash, Calendar, Clock, Users, SoccerBall, Trophy, Key } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
@@ -60,6 +60,9 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ updated: number; errors?: string[] } | null>(null);
 
+  // Estado de avanço de bracket
+  const [isAdvancing, setIsAdvancing] = useState(false);
+
   const handleSyncScores = async () => {
     setIsSyncing(true);
     setSyncResult(null);
@@ -77,6 +80,23 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
       showToast(err.message || 'Erro inesperado.', 'error');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleAdvanceBracket = async () => {
+    setIsAdvancing(true);
+    try {
+      const res = await triggerKnockoutAdvance();
+      if (res.success) {
+        showToast(`Bracket avançado! ${res.advanced ?? 0} time(s) preenchido(s).`, 'success');
+        router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao avançar bracket.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setIsAdvancing(false);
     }
   };
 
@@ -516,15 +536,26 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
             <Calendar size={18} className="text-accent-custom" />
             Lançar Resultados
           </h2>
-          <button
-            onClick={handleSyncScores}
-            disabled={isSyncing}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-custom/10 hover:bg-accent-custom/20 text-accent-custom border border-accent-custom/20 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 cursor-pointer"
-            title="Sincronizar placares automaticamente via football-data.org"
-          >
-            <ArrowsClockwise size={13} className={isSyncing ? 'animate-spin' : ''} />
-            {isSyncing ? 'Sincronizando...' : 'Auto-Sync'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAdvanceBracket}
+              disabled={isAdvancing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 cursor-pointer"
+              title="Avançar vencedores no bracket eliminatório"
+            >
+              <Trophy size={13} className={isAdvancing ? 'animate-pulse' : ''} />
+              {isAdvancing ? 'Avançando...' : 'Avançar Bracket'}
+            </button>
+            <button
+              onClick={handleSyncScores}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-custom/10 hover:bg-accent-custom/20 text-accent-custom border border-accent-custom/20 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all disabled:opacity-40 cursor-pointer"
+              title="Sincronizar placares automaticamente via football-data.org"
+            >
+              <ArrowsClockwise size={13} className={isSyncing ? 'animate-spin' : ''} />
+              {isSyncing ? 'Sincronizando...' : 'Auto-Sync'}
+            </button>
+          </div>
         </div>
         {syncResult && (
           <div className={`text-xs font-bold px-3 py-2 rounded-xl border ${syncResult.updated > 0 ? 'bg-accent-custom/5 border-accent-custom/20 text-accent-custom' : 'bg-muted border-border-custom text-secondary'}`}>

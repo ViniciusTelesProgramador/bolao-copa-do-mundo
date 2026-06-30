@@ -1171,6 +1171,29 @@ export async function getH2HData(userIdA: string, userIdB: string): Promise<H2HD
  * Dispara o auto-avanço do chaveamento para a próxima fase.
  * Apenas o admin pode chamar esta action.
  */
+/**
+ * Dispara o avanço automático do bracket manualmente (para quando os placares
+ * já estavam no banco antes do sistema ser ativado).
+ */
+export async function triggerKnockoutAdvance(): Promise<{ success: boolean; advanced?: number; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+      return { success: false, error: 'Não autorizado.' };
+    }
+    const adminClient = createAdminClient();
+    const { advanced, error } = await autoAdvanceKnockout(adminClient);
+    if (error) return { success: false, error };
+    revalidatePath('/');
+    revalidatePath('/todos');
+    revalidatePath('/admin');
+    return { success: true, advanced };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
 export async function setPenaltyWinner(
   matchId: string,
   winner: 'home' | 'away'
