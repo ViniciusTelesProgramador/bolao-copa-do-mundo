@@ -243,6 +243,16 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
   // Filtra as partidas pendentes de resultado
   const pendingMatches = matches.filter((m) => m.home_score === null || m.away_score === null);
 
+  const KNOCKOUT_STAGES_LIST = ['Fase de 32', 'Oitavas de Final', 'Quartas de Final', 'Semifinal'];
+  const penaltyPendingMatches = matches.filter(
+    (m) =>
+      KNOCKOUT_STAGES_LIST.includes(m.stage) &&
+      m.home_score !== null &&
+      m.away_score !== null &&
+      m.home_score === m.away_score &&
+      !m.penalty_winner
+  );
+
   const handleScoreChange = (matchId: string, side: 'home' | 'away', val: string) => {
     const current = editedScores[matchId] || { home: '', away: '' };
     setEditedScores({
@@ -563,6 +573,60 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
             {syncResult.errors && syncResult.errors.length > 0 && (
               <span className="block text-amber-500 mt-1">Avisos: {syncResult.errors.join(' | ')}</span>
             )}
+          </div>
+        )}
+
+        {/* Empates eliminatórios aguardando definição de pênaltis */}
+        {penaltyPendingMatches.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-xs font-extrabold text-violet-400 uppercase tracking-wider flex items-center gap-2">
+              🥅 Empates — definir vencedor por pênaltis ({penaltyPendingMatches.length})
+            </h3>
+            {penaltyPendingMatches.map((match) => (
+              <div key={match.id} className="bg-card border border-violet-500/30 rounded-2xl p-4 shadow-md">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] font-bold text-violet-400 uppercase tracking-wider">{match.stage}</span>
+                    <div className="flex items-center gap-2 text-sm font-extrabold text-primary">
+                      <span>{match.home_flag && <img src={`https://flagcdn.com/20x15/${match.home_flag}.png`} alt="" className="inline h-4 mr-1" />}{match.home_team}</span>
+                      <span className="text-violet-400">{match.home_score} × {match.away_score}</span>
+                      <span><img src={`https://flagcdn.com/20x15/${match.away_flag}.png`} alt="" className="inline h-4 mr-1" />{match.away_team}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPenaltyMatchId(penaltyMatchId === match.id ? null : match.id)}
+                    className="px-4 h-10 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 border border-violet-500/30 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    {penaltyMatchId === match.id ? 'Cancelar' : '🥅 Quem passou?'}
+                  </button>
+                </div>
+                {penaltyMatchId === match.id && (
+                  <div className="mt-3 pt-3 border-t border-violet-500/20">
+                    <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wider mb-2">
+                      Selecione o vencedor por pênaltis:
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSetPenaltyWinner(match.id, 'home')}
+                        disabled={savingPenalty}
+                        className="flex-1 h-11 rounded-xl text-sm font-extrabold uppercase tracking-wider bg-muted hover:bg-violet-500 hover:text-white text-secondary border border-border-custom transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {savingPenalty ? <Spinner className="animate-spin" size={14} /> : null}
+                        {match.home_team}
+                      </button>
+                      <button
+                        onClick={() => handleSetPenaltyWinner(match.id, 'away')}
+                        disabled={savingPenalty}
+                        className="flex-1 h-11 rounded-xl text-sm font-extrabold uppercase tracking-wider bg-muted hover:bg-violet-500 hover:text-white text-secondary border border-border-custom transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {savingPenalty ? <Spinner className="animate-spin" size={14} /> : null}
+                        {match.away_team}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
