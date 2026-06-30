@@ -649,74 +649,23 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                   key={match.id}
                   className="bg-card border border-border-custom hover:border-secondary rounded-2xl p-5 shadow-md transition-all duration-200"
                 >
-                  <div className="grid grid-cols-12 items-center gap-4 w-full text-sm">
-                    {/* Info Jogo */}
-                    <div className="col-span-12 md:col-span-3 text-center md:text-left space-y-1">
-                      <span className="bg-muted border border-border-custom/50 px-2.5 py-0.5 rounded-full text-[9px] text-primary uppercase font-bold inline-block select-none">
-                        {match.stage} {match.group_name ? `• ${match.group_name}` : ''}
+                  {/* Linha 1: info + botões ícone */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-muted border border-border-custom/50 px-2.5 py-0.5 rounded-full text-[9px] text-primary uppercase font-bold select-none">
+                        {match.stage}{match.group_name ? ` • ${match.group_name}` : ''}
                       </span>
-                      <div className="text-[11px] text-secondary font-extrabold block">
+                      <span className="text-[11px] text-secondary font-extrabold">
                         {formatMatchDateTime(match.match_time)}
-                      </div>
+                      </span>
                     </div>
-
-                    {/* Edição de Placar Simétrico */}
-                    <div className="col-span-12 md:col-span-6 flex items-center justify-between gap-3">
-                      {/* Time Casa */}
-                      <div className="flex-1 flex justify-end truncate">
-                        <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-xs sm:text-sm justify-end w-full" />
-                      </div>
-                      
-                      {/* Inputs com tamanho de toque de 48px */}
-                      <div className="flex items-center gap-1.5 shrink-0 mx-1">
-                        <input
-                          type="number"
-                          min="0"
-                          value={currentScore.home}
-                          onChange={(e) => handleScoreChange(match.id, 'home', e.target.value)}
-                          className="w-12 h-12 text-center font-black bg-base border border-border-custom focus:border-accent-custom rounded-xl text-primary text-base focus:outline-none transition-colors select-all"
-                          placeholder="-"
-                          required
-                        />
-                        <span className="text-secondary/40 font-black text-xs select-none">x</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={currentScore.away}
-                          onChange={(e) => handleScoreChange(match.id, 'away', e.target.value)}
-                          className="w-12 h-12 text-center font-black bg-base border border-border-custom focus:border-accent-custom rounded-xl text-primary text-base focus:outline-none transition-colors select-all"
-                          placeholder="-"
-                          required
-                        />
-                      </div>
-
-                      {/* Time Fora */}
-                      <div className="flex-1 flex justify-start truncate">
-                        <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-xs sm:text-sm justify-start w-full" />
-                      </div>
-                    </div>
-
-                    {/* Ações (Alvos de Toque min 48px) */}
-                    <div className="col-span-12 md:col-span-3 flex items-center justify-center md:justify-end gap-2 border-t md:border-t-0 border-border-custom/40 pt-3.5 md:pt-0">
-                      <button
-                        onClick={() => handleSaveResult(match.id)}
-                        disabled={isSaving}
-                        className="h-12 px-4 bg-muted hover:bg-accent-custom hover:text-slate-950 text-accent-custom text-xs font-extrabold uppercase tracking-wider rounded-xl border border-border-custom hover:border-transparent transition-all flex items-center gap-1.5 shadow-md flex-grow md:flex-grow-0 justify-center cursor-pointer"
-                      >
-                        {isSaving ? (
-                          <Spinner className="animate-spin" size={14} />
-                        ) : (
-                          <Check size={14} weight="bold" />
-                        )}
-                        Salvar
-                      </button>
-                      {/* Botão pênaltis: só para fases eliminatórias com empate no placar */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {['Fase de 32','Oitavas de Final','Quartas de Final','Semifinal'].includes(match.stage)
                         && match.home_score !== null && match.away_score !== null
                         && match.home_score === match.away_score && (
                         <button
                           onClick={() => setPenaltyMatchId(penaltyMatchId === match.id ? null : match.id)}
-                          className={`w-12 h-12 flex items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer text-xs font-black
+                          className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer text-xs
                             ${match.penalty_winner
                               ? 'bg-green-500/10 text-green-400 border-green-500/30'
                               : 'bg-muted hover:bg-violet-500/10 text-secondary hover:text-violet-400 border-border-custom/80 hover:border-violet-500/20'
@@ -731,19 +680,62 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                           setEditingTeamsId(editingTeamsId === match.id ? null : match.id);
                           setEditTeams({ homeTeam: match.home_team, homeFlag: match.home_flag, awayTeam: match.away_team, awayFlag: match.away_flag });
                         }}
-                        className="w-12 h-12 flex items-center justify-center bg-muted hover:bg-amber-500/10 text-secondary hover:text-amber-400 rounded-xl border border-border-custom/80 hover:border-amber-500/20 transition-all shrink-0 cursor-pointer"
+                        className="w-9 h-9 flex items-center justify-center bg-muted hover:bg-amber-500/10 text-secondary hover:text-amber-400 rounded-xl border border-border-custom/80 hover:border-amber-500/20 transition-all shrink-0 cursor-pointer"
                         title="Editar times"
                       >
-                        <Users size={15} />
+                        <Users size={14} />
                       </button>
                       <button
                         onClick={() => handleDeleteMatch(match.id)}
-                        className="w-12 h-12 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer"
+                        className="w-9 h-9 flex items-center justify-center bg-muted hover:bg-rose-500/10 text-secondary hover:text-rose-500 rounded-xl border border-border-custom/80 hover:border-rose-500/20 transition-all shrink-0 cursor-pointer"
                         title="Excluir Partida"
                       >
-                        <Trash size={15} />
+                        <Trash size={14} />
                       </button>
                     </div>
+                  </div>
+
+                  {/* Linha 2: times + placar (largura total) */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex justify-end min-w-0">
+                      <FlagTeam flag={match.home_flag} name={match.home_team} reverse={false} className="text-sm font-bold justify-end w-full" />
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentScore.home}
+                        onChange={(e) => handleScoreChange(match.id, 'home', e.target.value)}
+                        className="w-12 h-12 text-center font-black bg-base border border-border-custom focus:border-accent-custom rounded-xl text-primary text-base focus:outline-none transition-colors select-all"
+                        placeholder="-"
+                        required
+                      />
+                      <span className="text-secondary/40 font-black text-xs select-none">x</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={currentScore.away}
+                        onChange={(e) => handleScoreChange(match.id, 'away', e.target.value)}
+                        className="w-12 h-12 text-center font-black bg-base border border-border-custom focus:border-accent-custom rounded-xl text-primary text-base focus:outline-none transition-colors select-all"
+                        placeholder="-"
+                        required
+                      />
+                    </div>
+                    <div className="flex-1 flex justify-start min-w-0">
+                      <FlagTeam flag={match.away_flag} name={match.away_team} reverse={true} className="text-sm font-bold justify-start w-full" />
+                    </div>
+                  </div>
+
+                  {/* Linha 3: botão salvar */}
+                  <div className="mt-3 pt-3 border-t border-border-custom/30">
+                    <button
+                      onClick={() => handleSaveResult(match.id)}
+                      disabled={isSaving}
+                      className="w-full h-10 bg-muted hover:bg-accent-custom hover:text-slate-950 text-accent-custom text-xs font-extrabold uppercase tracking-wider rounded-xl border border-border-custom hover:border-transparent transition-all flex items-center gap-1.5 justify-center cursor-pointer"
+                    >
+                      {isSaving ? <Spinner className="animate-spin" size={14} /> : <Check size={14} weight="bold" />}
+                      Salvar Resultado
+                    </button>
                   </div>
 
                   {/* ── Pênaltis inline ── */}
