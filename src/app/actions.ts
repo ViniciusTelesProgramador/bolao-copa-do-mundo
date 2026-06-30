@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { RankingEntry, H2HData } from '@/types';
 import { revalidatePath } from 'next/cache';
 import timeMapping from '@/lib/match_times_mapping.json';
+import { autoAdvanceKnockout } from '@/lib/knockout-advance';
 
 /**
  * Salva ou edita o palpite de um usuário para uma determinada partida.
@@ -1160,5 +1161,45 @@ export async function getH2HData(userIdA: string, userIdB: string): Promise<H2HD
   } catch (e) {
     console.error('getH2HData error:', e);
     return null;
+  }
+}
+
+// ─── Penaltis / Avanço Automático ────────────────────────────────────────────
+
+/**
+ * Define o vencedor de uma partida empatada no tempo regulamentar (pênaltis).
+ * Dispara o auto-avanço do chaveamento para a próxima fase.
+ * Apenas o admin pode chamar esta action.
+ */
+export async function setPenaltyWinner(
+  matchId: string,
+  winner: 'home' | 'away'
+): Promise<{ success: boolean; error?: string; advanced?: number }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+      return { success: false, error: 'Não autorizado.' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { error: updateError } = await adminClient
+      .from('matches')
+      .update({ penalty_winner: winner })
+      .eq('id', matchId);
+
+    if (updateError) return { success: false, error: updateError.message };
+
+    // Trigger bracket advancement
+    const { advanced } = await autoAdvanceKnockout(adminClient);
+
+    revalidatePath('/');
+    revalidatePath('/todos');
+    revalidatePath('/admin');
+
+    return { success: true, advanced };
+  } catch (e: any) {
+    return { success: false, error: e.message };
   }
 }

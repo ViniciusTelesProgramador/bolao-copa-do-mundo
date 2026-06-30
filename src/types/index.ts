@@ -15,6 +15,7 @@ export interface Match {
   away_score: number | null;
   stage: string;
   group_name: string | null;
+  penalty_winner: 'home' | 'away' | null;
   created_at: string;
 }
 

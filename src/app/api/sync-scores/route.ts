@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFinishedWCMatches, teamsMatch } from '@/lib/football-data';
+import { autoAdvanceKnockout } from '@/lib/knockout-advance';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -74,8 +75,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 4. Revalidar cache de todas as páginas
+    // 4. Auto-avançar vencedores nas fases eliminatórias
+    let advanced = 0;
     if (updated > 0) {
+      const advResult = await autoAdvanceKnockout(supabase);
+      advanced = advResult.advanced;
+    }
+
+    // 5. Revalidar cache de todas as páginas
+    if (updated > 0 || advanced > 0) {
       revalidatePath('/');
       revalidatePath('/palpites');
       revalidatePath('/perfil');
@@ -84,8 +92,9 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      message: `Sync concluído. ${updated} placar(es) atualizado(s).`,
+      message: `Sync concluído. ${updated} placar(es) atualizado(s). ${advanced} time(s) avançado(s) no bracket.`,
       updated,
+      advanced,
       errors: errors.length > 0 ? errors : undefined,
     });
 

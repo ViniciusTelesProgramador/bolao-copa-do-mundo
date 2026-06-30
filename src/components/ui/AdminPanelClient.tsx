@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import FlagTeam from './FlagTeam';
 import { Match } from '@/types';
-import { saveMatchResult, shiftAllMatchTimes, updateMatchTeams } from '@/app/actions';
+import { saveMatchResult, shiftAllMatchTimes, updateMatchTeams, setPenaltyWinner } from '@/app/actions';
 import { Plus, Check, Spinner, Trash, Calendar, Clock, Users, SoccerBall, Trophy, Key } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { showToast } from './Toast';
@@ -77,6 +77,28 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
       showToast(err.message || 'Erro inesperado.', 'error');
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  // Estado de pênaltis
+  const [penaltyMatchId, setPenaltyMatchId] = useState<string | null>(null);
+  const [savingPenalty, setSavingPenalty] = useState(false);
+
+  const handleSetPenaltyWinner = async (matchId: string, winner: 'home' | 'away') => {
+    setSavingPenalty(true);
+    try {
+      const res = await setPenaltyWinner(matchId, winner);
+      if (res.success) {
+        showToast(`Vencedor por pênaltis definido! ${res.advanced ?? 0} time(s) avançado(s).`, 'success');
+        setPenaltyMatchId(null);
+        router.refresh();
+      } else {
+        showToast(res.error || 'Erro ao definir pênaltis.', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erro inesperado.', 'error');
+    } finally {
+      setSavingPenalty(false);
     }
   };
 
@@ -593,6 +615,22 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                         )}
                         Salvar
                       </button>
+                      {/* Botão pênaltis: só para fases eliminatórias com empate no placar */}
+                      {['Fase de 32','Oitavas de Final','Quartas de Final','Semifinal'].includes(match.stage)
+                        && match.home_score !== null && match.away_score !== null
+                        && match.home_score === match.away_score && (
+                        <button
+                          onClick={() => setPenaltyMatchId(penaltyMatchId === match.id ? null : match.id)}
+                          className={`w-12 h-12 flex items-center justify-center rounded-xl border transition-all shrink-0 cursor-pointer text-xs font-black
+                            ${match.penalty_winner
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                              : 'bg-muted hover:bg-violet-500/10 text-secondary hover:text-violet-400 border-border-custom/80 hover:border-violet-500/20'
+                            }`}
+                          title="Definir vencedor por pênaltis"
+                        >
+                          🥅
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setEditingTeamsId(editingTeamsId === match.id ? null : match.id);
@@ -612,6 +650,45 @@ export default function AdminPanelClient({ matches, users, adminUserId }: AdminP
                       </button>
                     </div>
                   </div>
+
+                  {/* ── Pênaltis inline ── */}
+                  {penaltyMatchId === match.id && (
+                    <div className="mt-4 pt-4 border-t border-violet-500/30 bg-violet-500/5 rounded-xl p-4">
+                      <p className="text-xs font-black text-violet-400 uppercase tracking-wider mb-3">
+                        🥅 Empate no tempo regulamentar — quem passou nos pênaltis?
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleSetPenaltyWinner(match.id, 'home')}
+                          disabled={savingPenalty}
+                          className={`flex-1 h-11 rounded-xl text-sm font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2
+                            ${match.penalty_winner === 'home'
+                              ? 'bg-green-500 text-slate-950'
+                              : 'bg-muted hover:bg-violet-500 hover:text-white text-secondary border border-border-custom'
+                            }`}
+                        >
+                          {savingPenalty ? <Spinner className="animate-spin" size={14} /> : null}
+                          {match.home_team}
+                        </button>
+                        <button
+                          onClick={() => handleSetPenaltyWinner(match.id, 'away')}
+                          disabled={savingPenalty}
+                          className={`flex-1 h-11 rounded-xl text-sm font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2
+                            ${match.penalty_winner === 'away'
+                              ? 'bg-green-500 text-slate-950'
+                              : 'bg-muted hover:bg-violet-500 hover:text-white text-secondary border border-border-custom'
+                            }`}
+                        >
+                          {savingPenalty ? <Spinner className="animate-spin" size={14} /> : null}
+                          {match.away_team}
+                        </button>
+                        <button onClick={() => setPenaltyMatchId(null)}
+                          className="px-4 h-11 bg-muted text-secondary text-xs font-bold rounded-xl border border-border-custom transition-all cursor-pointer">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── Editar times inline ── */}
                   {editingTeamsId === match.id && (
