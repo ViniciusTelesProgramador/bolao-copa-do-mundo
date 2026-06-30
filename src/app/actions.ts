@@ -296,9 +296,10 @@ export async function getRanking(): Promise<RankingEntry[]> {
       };
     });
 
-    // 5. Ordenar: 1º por pontos totais (decrescente), 2º por palpites feitos (decrescente), 3º alfabeticamente
+    // 5. Ordenar: 1º pontos totais, 2º aproveitamento %, 3º nº palpites, 4º alfabeticamente
     rankingList.sort((a, b) => {
       if (b.total_points !== a.total_points) return b.total_points - a.total_points;
+      if (b.aproveitamento !== a.aproveitamento) return b.aproveitamento - a.aproveitamento;
       if (b.predictions_count !== a.predictions_count) return b.predictions_count - a.predictions_count;
       return a.name.localeCompare(b.name);
     });
