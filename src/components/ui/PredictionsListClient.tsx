@@ -361,7 +361,11 @@ export default function PredictionsListClient({
         const standings = isGroupStage ? computeGroupStandings(groupMatches) : [];
 
         return (
-          <div key={groupKey} className="space-y-3">
+          <div
+            key={groupKey}
+            id={`secao-${groupKey.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[º°]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-')}`}
+            className="space-y-3"
+          >
             {/* Header do Grupo */}
             <div className="flex items-center gap-2.5 pt-2">
               <span className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-500 text-slate-950 font-black text-xs uppercase shrink-0 select-none shadow-sm">

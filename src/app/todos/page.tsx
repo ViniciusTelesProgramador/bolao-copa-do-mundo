@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
 import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 import KnockoutBracket, { BracketColumn } from '@/components/ui/KnockoutBracket';
+import TodosNavBar from '@/components/ui/TodosNavBar';
 import { fetchPlayerImage, normalizeName } from '@/lib/football-data';
 import { Match } from '@/types';
 
@@ -75,6 +76,10 @@ export default async function TodosPalpitesPage() {
   // Só mostra o chaveamento quando o mata-mata já tiver confrontos reais definidos
   const knockoutStarted = [...bracketColumns.flatMap((c) => c.matches), ...(thirdPlaceMatch ? [thirdPlaceMatch] : [])]
     .some((m) => m.home_team !== 'A confirmar' && m.away_team !== 'A confirmar');
+
+  const KNOCKOUT_NAV_ORDER = ['Fase de 32', 'Oitavas de Final', 'Quartas de Final', 'Semifinal', 'Decisão do 3º Lugar', 'Final'];
+  const hasGroups = matches.some((m) => m.stage === 'Fase de Grupos');
+  const knockoutNavStages = KNOCKOUT_NAV_ORDER.filter((s) => matches.some((m) => m.stage === s));
 
   // Agrupar palpites por nome normalizado (une "Mbappé" com "Mbappe", etc.)
   const groups = new Map<string, {
@@ -158,12 +163,20 @@ export default async function TodosPalpitesPage() {
         </p>
       </div>
 
+      <TodosNavBar
+        showBracket={knockoutStarted}
+        hasGroups={hasGroups}
+        knockoutStages={knockoutNavStages}
+      />
+
       {knockoutStarted && (
-        <KnockoutBracket columns={bracketColumns} thirdPlace={thirdPlaceMatch} />
+        <div id="secao-chaveamento">
+          <KnockoutBracket columns={bracketColumns} thirdPlace={thirdPlaceMatch} />
+        </div>
       )}
 
       {/* Seção: Artilheiro — palpite + cards por jogador */}
-      <div className="mb-12">
+      <div id="secao-artilheiro" className="mb-12">
         <div className="flex items-center gap-2 mb-6 pb-3 border-b border-border-custom/60">
           <span className="text-lg">⚽</span>
           <h2 className="text-sm font-black text-primary uppercase tracking-wider">Palpites de Artilheiro</h2>
