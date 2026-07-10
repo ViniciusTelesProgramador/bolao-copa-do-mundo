@@ -121,7 +121,8 @@ export default async function TodosPalpitesPage() {
   const admin = createAdminClient();
   const { data: predictionsData } = await admin
     .from('predictions')
-    .select(`id, match_id, user_id, home_score, away_score, points, profiles ( name )`);
+    .select(`id, match_id, user_id, home_score, away_score, points, profiles ( name )`)
+    .limit(50000);
 
   const rawPredictions = (predictionsData || []) as unknown as RawPrediction[];
   const now = new Date();
