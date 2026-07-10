@@ -249,10 +249,12 @@ export async function getRanking(): Promise<RankingEntry[]> {
     }
 
     // 2. Buscar todas as predictions que possuem pontos definidos
+    // Limit explícito: Supabase retorna no máximo 1000 por padrão (silenciosamente)
     const { data: predictions, error: predictionsError } = await admin
       .from('predictions')
       .select('user_id, points')
-      .not('points', 'is', null);
+      .not('points', 'is', null)
+      .limit(50000);
 
     if (predictionsError) {
       console.error('Erro ao buscar palpites para o ranking:', predictionsError);

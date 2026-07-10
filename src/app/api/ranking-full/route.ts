@@ -16,7 +16,8 @@ export async function GET() {
   const { data: scored } = await admin
     .from('predictions')
     .select('user_id, points, match:matches ( match_time )')
-    .not('points', 'is', null);
+    .not('points', 'is', null)
+    .limit(50000);
 
   const profileByUserId = new Map(ranking.map(r => [r.user_id, r]));
   const roundsMap = new Map<string, Map<string, { points: number; predictions_count: number }>>();
