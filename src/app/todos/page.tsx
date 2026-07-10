@@ -1,5 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import PredictionsListClient from '@/components/ui/PredictionsListClient';
 import ArtilheiroGuessForm from '@/components/ui/ArtilheiroGuessForm';
 import KnockoutBracket, { BracketColumn } from '@/components/ui/KnockoutBracket';
@@ -116,8 +117,9 @@ export default async function TodosPalpitesPage() {
 
   const profilesWithoutGuess = allProfiles.filter(p => !p.artilheiro_guess);
 
-  // Buscar palpites dos jogos
-  const { data: predictionsData } = await supabase
+  // Buscar palpites dos jogos — admin client para ignorar RLS e ver todos
+  const admin = createAdminClient();
+  const { data: predictionsData } = await admin
     .from('predictions')
     .select(`id, match_id, user_id, home_score, away_score, points, profiles ( name )`);
 
